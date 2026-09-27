@@ -32,6 +32,9 @@
  * `email_templates.version`) and `email_logs.template_version` (nullable), so
  * every templated send records exactly which version it was rendered from.
  *
+ * Phase 6 adds `sandbox_requests` — the sandbox-exit assistant's draft and
+ * its human-review record.
+ *
  * No baseline column is renamed, retyped or dropped.
  */
 import {
@@ -283,6 +286,38 @@ export const emailTemplateVersions = pgTable(
 );
 
 /**
+ * SES production-access request drafts — Phase 6, SRS §13.
+ *
+ * One draft per tenant and environment (an SES account/region is what is being
+ * taken out of the sandbox). `answers` is exactly what the user typed. The
+ * review columns record the human sign-off: who confirmed the generated text,
+ * when, and a hash of the exact text they confirmed — so any later edit
+ * invalidates the review rather than carrying it over to text nobody read.
+ */
+export const sandboxRequests = pgTable(
+  "sandbox_requests",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    environment: environmentEnum("environment").notNull(),
+    answers: jsonb("answers").notNull(),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    reviewedBy: varchar("reviewed_by", { length: 320 }),
+    /** SHA-256 of the generated text the reviewer confirmed. */
+    reviewedHash: varchar("reviewed_hash", { length: 64 }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => [uniqueIndex("sandbox_requests_user_env").on(t.userId, t.environment)],
+);
+
+/**
  * SNS topics a tenant has registered as event sources — Phase 3.
  *
  * Every tenant posts to the same webhook URL (SRS §7), so the topic ARN is what
@@ -397,3 +432,4 @@ export type SnsEvent = typeof snsEvents.$inferSelect;
 export type AuditLog = typeof auditLogs.$inferSelect;
 export type EmailTemplate = typeof emailTemplates.$inferSelect;
 export type EmailTemplateVersion = typeof emailTemplateVersions.$inferSelect;
+export type SandboxRequest = typeof sandboxRequests.$inferSelect;

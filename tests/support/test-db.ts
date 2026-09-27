@@ -47,7 +47,7 @@ export async function resetTestDb(): Promise<void> {
   await migrateTestDb();
   // `users` cascades to every other table via its foreign keys.
   await getDb().execute(
-    "TRUNCATE TABLE users, aws_credentials, verified_domains, email_templates, email_logs, suppression_list, api_keys, sns_topics, sns_events, audit_logs, email_template_versions RESTART IDENTITY CASCADE",
+    "TRUNCATE TABLE users, aws_credentials, verified_domains, email_templates, email_logs, suppression_list, api_keys, sns_topics, sns_events, audit_logs, email_template_versions, sandbox_requests RESTART IDENTITY CASCADE",
   );
 }
 

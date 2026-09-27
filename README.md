@@ -19,6 +19,7 @@ starts.
 | 3 | Domains, SNS webhooks, suppression | **Code complete** — see [`docs/PHASE-3.md`](docs/PHASE-3.md). Real-AWS checks (domain, SNS) deferred — no domain or public endpoint yet |
 | 4 | Product dashboard & developer experience | **Code complete** — see [`docs/PHASE-4.md`](docs/PHASE-4.md). Browser check at phone width pending |
 | 5 | Template system | **Code complete** — see [`docs/PHASE-5.md`](docs/PHASE-5.md). Browser check pending |
+| 6 | AWS sandbox exit assistant | **Code complete** — see [`docs/PHASE-6.md`](docs/PHASE-6.md). Browser check pending |
 
 ## Stack
 
@@ -58,7 +59,8 @@ src/
     api/v1/webhooks/    POST /api/v1/webhooks/aws-sns
     api/v1/domains/     GET  /api/v1/domains/verify
     dashboard/          Overview, Activity (+ message detail), Errors,
-                        Templates (editor, versions, test send), Domains, Suppressions, Webhooks, API keys, AWS,
+                        Templates (editor, versions, test send), Domains,
+                        Production access (sandbox-exit assistant), Suppressions, Webhooks, API keys, AWS,
                         Queue & health — environment switcher in the sidebar
     login/ signup/      Supabase Auth
   db/                   Drizzle schema (SRS §6) and client
@@ -69,6 +71,7 @@ src/
     sns/                Envelope parsing and signature verification
     dns/                SPF/DKIM/DMARC lookups and analysis
     templates/          {{variable}} engine: validate, render, plain-text fallback
+    sandbox/            production-access request generator (no fabrication by construction)
     api/                Error model, request IDs, validation, logging
     supabase/           Server client and session middleware
     queue/              Redis connection, BullMQ queue, rate limiter, retry policy
@@ -83,7 +86,7 @@ tests/                  Unit + integration (PGlite + real redis-server)
 ## Tests
 
 ```bash
-npm test                  # 547 tests
+npm test                  # 586 tests
 npm run typecheck
 npm run typecheck:worker
 ```

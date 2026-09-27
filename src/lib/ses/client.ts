@@ -33,6 +33,13 @@ export interface SesAccountSnapshot {
   sentLast24Hours: number | null;
   /** AWS reputation enforcement status, e.g. "HEALTHY". */
   enforcementStatus: string | null;
+  /**
+   * AWS's own status for the latest production-access review — PENDING,
+   * GRANTED, DENIED or FAILED — exactly as reported; null if never requested.
+   * The only approval status this platform ever displays.
+   */
+  reviewStatus?: string | null;
+  reviewCaseId?: string | null;
 }
 
 export function createSesClient(credentials: SesCredentials): SESv2Client {
@@ -65,6 +72,8 @@ export async function describeSesAccount(
       max24HourSend: account.SendQuota?.Max24HourSend ?? null,
       sentLast24Hours: account.SendQuota?.SentLast24Hours ?? null,
       enforcementStatus: account.EnforcementStatus ?? null,
+      reviewStatus: account.Details?.ReviewDetails?.Status ?? null,
+      reviewCaseId: account.Details?.ReviewDetails?.CaseId ?? null,
     };
   } finally {
     client.destroy();

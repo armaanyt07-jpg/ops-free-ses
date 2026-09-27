@@ -13,6 +13,7 @@ import {
   KeyRound,
   LayoutDashboard,
   Menu,
+  Rocket,
   ShieldOff,
   Webhook,
   X,
@@ -53,6 +54,7 @@ const GROUPS = [
     items: [
       { href: "/dashboard/api-keys", label: "API keys", icon: KeyRound },
       { href: "/dashboard/aws", label: "AWS", icon: Cloud },
+      { href: "/dashboard/sandbox", label: "Production access", icon: Rocket },
     ],
   },
   {

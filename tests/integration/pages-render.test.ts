@@ -89,3 +89,45 @@ describe("every dashboard page server-renders", () => {
     expect(out).toContain("Suppressions"); expect(out).toContain("child"); expect(out).toContain('aria-current="page"');
   });
 });
+
+describe("production-access assistant page", () => {
+  const page = async () => (await import("@/app/dashboard/sandbox/page")).default();
+
+  it("renders the questionnaire and lists what is missing", async () => {
+    const out = await html(await page());
+    for (const t of ["Status reported by AWS", "In the sandbox", "Questionnaire", "Answer these to generate the request"]) {
+      expect(out).toContain(t);
+    }
+    expect(out).not.toContain("Copy use case description");
+  });
+
+  it("shows a draft with sources, and no copy buttons before review", async () => {
+    const sandbox = await import("@/server/sandbox");
+    await sandbox.saveDraft(tenant.current.id, "production", {
+      region: "ap-south-1", mailType: "TRANSACTIONAL", companyName: "Quokka", websiteUrl: "https://quokka.example",
+      useCase: "Quokka is a bookkeeping app for freelancers that sends sign-up confirmations and password resets.",
+      emailTypes: ["password_reset"], dailyVolume: 250,
+      acquisitionDetails: "Recipients create their own accounts and enter their address.",
+      bounceHandling: "We stop mailing hard-bouncing addresses.", complaintHandling: "We remove complainers at once.",
+      suppressionStrategy: "We check a suppression list before every send.",
+    });
+    const out = await html(await page());
+    for (const t of ["Draft — for your review", "Source: Your answer: use case", "Approximately 250 emails per day", "I have reviewed this request"]) {
+      expect(out).toContain(t);
+    }
+    expect(out).not.toContain("Copy use case description");
+  });
+
+  it("after review, offers copy and the console link — and still claims nothing", async () => {
+    const sandbox = await import("@/server/sandbox");
+    const built = await sandbox.buildRequest(tenant.current.id, "production");
+    if (!built.ok) throw new Error("expected complete");
+    await sandbox.markReviewed(tenant.current.id, "production", "dev@example.test", built.hash);
+
+    const out = await html(await page());
+    for (const t of ["Reviewed", "Copy use case description", "console.aws.amazon.com/ses/home?region=ap-south-1", "Nothing is submitted by this platform"]) {
+      expect(out).toContain(t);
+    }
+    expect(out.toLowerCase()).not.toMatch(/you will be approved|approval is likely|guaranteed/);
+  });
+});
