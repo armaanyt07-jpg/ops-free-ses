@@ -1,0 +1,34 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1790443616521,
+      "tag": "0000_phase1_core_schema",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1790486003984,
+      "tag": "0001_phase3_domains_events",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790501607721,
+      "tag": "0002_phase4_dashboard",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1790503365654,
+      "tag": "0003_phase5_templates",
+      "breakpoints": true
+    }
+  ]
+}

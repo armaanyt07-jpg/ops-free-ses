@@ -1,0 +1,152 @@
+import { randomUUID } from "node:crypto";
+
+import { config } from "dotenv";
+import { DelayedError, Worker } from "bullmq";
+
+config({ path: ".env.local" });
+
+import { log } from "@/lib/api/logger";
+import { createRedis } from "@/lib/queue/connection";
+import {
+  DOMAIN_QUEUE_NAME,
+  domainPollDelayMs,
+  type DomainJobData,
+} from "@/lib/queue/domain-queue";
+import { backoffDelayMs } from "@/lib/queue/retry-policy";
+import { SEND_QUEUE_NAME, type SendJobData } from "@/lib/queue/send-queue";
+
+import { processDomainJob } from "./domain-processor";
+import { Heartbeat } from "./heartbeat";
+import { createSendProcessor } from "./processor";
+
+/**
+ * SES delivery worker — SRS §15.
+ *
+ * "Long-lived BullMQ workers should not be treated as ordinary Vercel
+ * serverless request handlers. Use a worker runtime compatible with
+ * persistent/background processing."
+ *
+ * A standalone Node process. This is the only place in the system that calls
+ * SES, and the only place outside the dashboard that decrypts a customer
+ * credential. Run it with `npm run worker`.
+ */
+const WORKER_ID = process.env.WORKER_ID ?? `w-${randomUUID().slice(0, 8)}`;
+
+const CONCURRENCY = (() => {
+  const raw = Number.parseInt(process.env.WORKER_CONCURRENCY ?? "", 10);
+  if (Number.isFinite(raw) && raw > 0 && raw <= 100) return raw;
+  return 5;
+})();
+
+// Three connections by role: the worker's blocking reads occupy their socket,
+// so they cannot also serve the limiter's or the heartbeat's commands.
+const connection = createRedis("worker");
+const utilRedis = createRedis("util");
+
+const heartbeat = new Heartbeat(utilRedis, WORKER_ID, CONCURRENCY);
+
+const worker = new Worker<SendJobData>(
+  SEND_QUEUE_NAME,
+  createSendProcessor({ redis: utilRedis }),
+  {
+    connection,
+    concurrency: CONCURRENCY,
+    // SES calls can be slow; the lock must outlive the call, or a job that is
+    // still legitimately running gets treated as stalled.
+    lockDuration: 60_000,
+    // A job whose worker died is returned to `wait` rather than lost. This is
+    // what makes "worker failure does not silently lose accepted jobs" true.
+    stalledInterval: 30_000,
+    maxStalledCount: 2,
+    settings: {
+      backoffStrategy: (attemptsMade: number) => backoffDelayMs(attemptsMade),
+    },
+  },
+);
+
+worker.on("completed", () => heartbeat.recordProcessed());
+
+// Domain verification polling (Phase 3). Its own connection, for the same
+// reason as above: a blocking read occupies the socket it runs on. Low
+// concurrency — each job is one SES call and a few DNS lookups, and nothing
+// about it is latency-sensitive.
+const domainConnection = createRedis("worker");
+
+const domainWorker = new Worker<DomainJobData>(
+  DOMAIN_QUEUE_NAME,
+  processDomainJob,
+  {
+    connection: domainConnection,
+    concurrency: 2,
+    lockDuration: 60_000,
+    settings: {
+      backoffStrategy: (attemptsMade: number) => domainPollDelayMs(attemptsMade),
+    },
+  },
+);
+
+worker.on("failed", (job, error) => {
+  if (error instanceof DelayedError) return; // deferred by the limiter, not failed
+  heartbeat.recordFailed();
+  log.warn({
+    event: "worker.job_failed",
+    requestId: job?.data.requestId ?? "unknown",
+    jobId: job?.id,
+    logId: job?.data.logId,
+    attempt: job?.attemptsMade,
+    detail: error.message.slice(0, 200),
+  });
+});
+
+worker.on("error", (error) => {
+  log.error({ event: "worker.error", requestId: "worker", detail: error.message });
+});
+
+// Without a listener an 'error' event would take the whole process down,
+// including the send worker.
+domainWorker.on("error", (error) => {
+  log.error({ event: "worker.domain_error", requestId: "worker", detail: error.message });
+});
+
+heartbeat.start();
+
+log.info({
+  event: "worker.started",
+  requestId: "worker",
+  detail: `id=${WORKER_ID} concurrency=${CONCURRENCY} queues=${SEND_QUEUE_NAME},${DOMAIN_QUEUE_NAME}`,
+});
+
+/**
+ * Graceful shutdown.
+ *
+ * `worker.close()` stops accepting new jobs and waits for in-flight ones, so a
+ * deploy does not abandon a job mid-SES-call. Anything still running when the
+ * platform's grace period expires is recovered by stalled-job detection.
+ */
+let shuttingDown = false;
+
+async function shutdown(signal: string): Promise<void> {
+  if (shuttingDown) return;
+  shuttingDown = true;
+
+  log.info({ event: "worker.shutdown", requestId: "worker", detail: signal });
+
+  try {
+    await Promise.all([worker.close(), domainWorker.close()]);
+    await heartbeat.stop();
+    await connection.quit();
+    await domainConnection.quit();
+    await utilRedis.quit();
+  } catch (error) {
+    log.error({
+      event: "worker.shutdown_error",
+      requestId: "worker",
+      detail: error instanceof Error ? error.message : "unknown",
+    });
+  } finally {
+    process.exit(0);
+  }
+}
+
+process.on("SIGTERM", () => void shutdown("SIGTERM"));
+process.on("SIGINT", () => void shutdown("SIGINT"));
