@@ -10,9 +10,8 @@ import { useEffect, useRef, useState } from "react";
  * below 3:1 contrast, so the legend, per-column tooltip and data table below
  * are the required relief, not decoration). Columns are capped at 24px with a
  * 4px rounded data-end and a square baseline; stacked segments are separated by
- * a 2px surface gap rather than strokes; gridlines are 1px and recessive.
- *
- * Light only: this app has no dark theme to validate against.
+ * a 2px surface gap rather than strokes; gridlines are 1px and recessive, using
+ * the theme's border token so they stay correct if dark mode is ever enabled.
  */
 export interface VolumePoint {
   /** ISO timestamp of the bucket start (UTC). */
@@ -128,7 +127,7 @@ export function VolumeChart({ points, hourly }: { points: VolumePoint[]; hourly:
                 x2={width - PAD.right}
                 y1={y(t)}
                 y2={y(t)}
-                stroke={t === 0 ? "#c3c2b7" : "#ecebe6"}
+                className={t === 0 ? "stroke-border" : "stroke-border/60"}
                 strokeWidth={1}
                 shapeRendering="crispEdges"
               />
@@ -186,6 +185,7 @@ export function VolumeChart({ points, hourly }: { points: VolumePoint[]; hourly:
                   onFocus={() => setHover(i)}
                   onBlur={() => setHover(null)}
                   tabIndex={0}
+                  role="img"
                   aria-label={`${label(new Date(p.start), hourly)}: ${totals[i]} messages`}
                 />
               </g>
@@ -194,9 +194,20 @@ export function VolumeChart({ points, hourly }: { points: VolumePoint[]; hourly:
         </svg>
 
         {empty ? (
-          <p className="text-muted-foreground pointer-events-none absolute inset-0 grid place-items-center text-sm">
-            No messages in this window.
-          </p>
+          <div className="pointer-events-none absolute inset-0 grid place-items-center text-center">
+            <div className="space-y-1.5">
+              <p className="text-sm font-medium">No messages in this window</p>
+              <p className="text-muted-foreground text-xs">
+                Nothing was sent in this environment yet, or try a longer window.
+              </p>
+              <a
+                href="#send-test"
+                className="text-primary pointer-events-auto inline-block text-xs font-medium hover:underline"
+              >
+                Send a test email →
+              </a>
+            </div>
+          </div>
         ) : null}
 
         {hovered && hover !== null ? (

@@ -116,6 +116,20 @@ describe("migrations", () => {
     for (const row of found) expect(row.is_nullable).toBe("YES");
   });
 
+  // Phase 7 security fix. Supabase's Data API exposes every `public` table to
+  // the anon role; RLS with no policies is the deny-by-default backstop. A new
+  // table created without it fails here instead of silently reopening the hole.
+  it("enables row-level security on every application table", async () => {
+    const tables = await rows<{ relname: string; relrowsecurity: boolean }>(`
+      SELECT c.relname, c.relrowsecurity FROM pg_class c
+      JOIN pg_namespace n ON n.oid = c.relnamespace
+      WHERE n.nspname = 'public' AND c.relkind = 'r'
+    `);
+    expect(tables.length).toBeGreaterThanOrEqual(12);
+    const without = tables.filter((t) => !t.relrowsecurity).map((t) => t.relname);
+    expect(without, `tables without RLS: ${without.join(", ")}`).toEqual([]);
+  });
+
   it("is idempotent when applied twice", async () => {
     await expect(migrateTestDb()).resolves.not.toThrow();
   });

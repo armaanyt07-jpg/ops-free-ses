@@ -145,3 +145,25 @@ export function safeEqual(a: string, b: string): boolean {
   if (bufA.length !== bufB.length) return false;
   return timingSafeEqual(bufA, bufB);
 }
+
+/**
+ * Decrypts with the first key in a keyring that authenticates — Phase 7 key
+ * rotation. GCM's tag makes trial decryption safe: a wrong key fails
+ * verification rather than yielding garbage. Order is current key first, so
+ * the common case costs one attempt.
+ */
+export function decryptWithKeyring(
+  envelope: string,
+  keys: readonly Buffer[],
+  aad: CredentialAad,
+): { plaintext: string; keyIndex: number } {
+  let last: unknown;
+  for (const [keyIndex, key] of keys.entries()) {
+    try {
+      return { plaintext: decryptSecret(envelope, key, aad), keyIndex };
+    } catch (error) {
+      last = error;
+    }
+  }
+  throw last instanceof DecryptionError ? last : new DecryptionError("No key in the keyring could decrypt the credential");
+}

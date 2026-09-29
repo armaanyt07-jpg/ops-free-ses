@@ -1,13 +1,37 @@
 import Link from "next/link";
 
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { AMBER, GREEN } from "@/components/dashboard/badge-tones";
+import type { Environment } from "@/db/schema";
 import { formatDateTime, formatRelative } from "@/lib/dashboard/format";
 import { hrefWith, type SearchParams } from "@/lib/dashboard/params";
+import { cn } from "@/lib/utils";
 
 /**
  * Small server components shared by every dashboard page, so headings, times,
  * stat tiles and pagination look and behave the same everywhere.
  */
+
+/**
+ * The single, unambiguous environment indicator. Every place that shows the
+ * active environment (nav, page headers) should use this rather than its own
+ * ad-hoc badge, so "which environment am I looking at" never has two answers.
+ */
+export function EnvironmentBadge({ environment }: { environment: Environment }) {
+  return (
+    <Badge
+      data-testid="environment-badge"
+      variant="secondary"
+      className={cn(
+        "font-semibold tracking-wide uppercase",
+        environment === "production" ? GREEN : AMBER,
+      )}
+    >
+      {environment}
+    </Badge>
+  );
+}
 
 export function PageHeader({
   title,
@@ -53,10 +77,14 @@ export function StatTile({
   href?: string;
 }) {
   const body = (
-    <Card className="h-full gap-1 py-4 transition-colors hover:bg-muted/40">
+    <Card className="h-full gap-1.5 py-4 transition-colors hover:border-primary/30 hover:shadow-sm">
       <CardHeader className="px-4">
-        <CardDescription>{label}</CardDescription>
-        <CardTitle className="text-2xl font-semibold">{value}</CardTitle>
+        <CardDescription className="text-xs font-medium tracking-wide uppercase">
+          {label}
+        </CardDescription>
+        <CardTitle className="text-3xl font-semibold tracking-tight tabular-nums">
+          {value}
+        </CardTitle>
       </CardHeader>
       {hint ? <CardContent className="text-muted-foreground px-4 text-xs">{hint}</CardContent> : null}
     </Card>

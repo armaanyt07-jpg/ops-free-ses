@@ -150,7 +150,7 @@ export function SandboxQuestionnaire({
               onClick={() => setStep(i)}
               aria-current={i === step ? "step" : undefined}
               className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs ${
-                i === step ? "bg-foreground text-background" : "hover:bg-muted"
+                i === step ? "border-primary bg-primary/10 text-primary" : "hover:bg-muted"
               }`}
             >
               {i < step ? <CheckCircle2 className="size-3.5" aria-hidden /> : <Circle className="size-3.5" aria-hidden />}

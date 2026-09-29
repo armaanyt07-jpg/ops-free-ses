@@ -6,9 +6,12 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import { log } from "@/lib/api/logger";
+
 import { normaliseRecipients } from "@/lib/api/send-schema";
 import type { Issue } from "@/lib/templates/engine";
 import { getActiveEnvironment } from "@/server/environment";
+import { checkLimit } from "@/server/abuse";
 import { acceptSend } from "@/server/send-service";
 import {
   createTemplate,
@@ -111,7 +114,10 @@ export async function setTemplateArchived(formData: FormData): Promise<void> {
   const tenant = await requireTenant();
   const id = z.string().uuid().safeParse(formData.get("id"));
   if (!id.success) return;
-  await setTemplateActive(tenant.id, id.data, formData.get("archived") !== "true");
+  const archived = formData.get("archived") === "true";
+  if (await setTemplateActive(tenant.id, id.data, !archived)) {
+    log.security(archived ? "template.archived" : "template.unarchived", tenant.id, id.data);
+  }
   revalidatePath("/dashboard/templates");
   revalidatePath(`/dashboard/templates/${id.data}`);
 }
@@ -144,6 +150,12 @@ export async function sendTemplateTest(
 ): Promise<TemplateTestState> {
   const tenant = await requireTenant();
   const environment = await getActiveEnvironment(tenant.id);
+
+  // Phase 7: test sends are real sends; bound them per tenant (10/minute).
+  const limit = await checkLimit("testSend", tenant.id);
+  if (!limit.allowed) {
+    return { error: `Too many test sends. Try again in ${Math.ceil(limit.retryAfterMs / 1000)}s.` };
+  }
 
   const parsed = testSchema.safeParse({
     id: formData.get("id"),

@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
+import { log } from "@/lib/api/logger";
+
 import {
   registerTopic,
   removeTopic,
@@ -26,6 +28,7 @@ export async function addTopic(
 
   try {
     const topic = await registerTopic(tenant.id, arn.data);
+    log.security("sns_topic.registered", tenant.id, topic.topicArn);
     revalidatePath("/dashboard/webhooks");
     return {
       success:
@@ -44,6 +47,6 @@ export async function deleteTopic(formData: FormData): Promise<void> {
   const id = z.string().uuid().safeParse(formData.get("id"));
   if (!id.success) return;
 
-  await removeTopic(tenant.id, id.data);
+  if (await removeTopic(tenant.id, id.data)) log.security("sns_topic.removed", tenant.id, id.data);
   revalidatePath("/dashboard/webhooks");
 }

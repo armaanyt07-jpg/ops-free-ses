@@ -135,3 +135,26 @@ export async function acquireSendToken(
     retryAfterMs: allowed === 1 ? 0 : Math.max(waitMs, 50),
   };
 }
+
+/**
+ * The same atomic token bucket, for any key and rate — Phase 7 API abuse
+ * protection reuses it rather than adding a second limiter implementation.
+ * `ratePerSecond` may be fractional (e.g. 10/minute = 1/6).
+ */
+export async function consumeToken(
+  redis: Redis,
+  key: string,
+  ratePerSecond: number,
+  capacity: number,
+): Promise<RateLimitDecision> {
+  registerRateLimiter(redis);
+  const client = redis as RedisWithLimiter;
+  const [allowed, waitMs] = await client.sesTokenBucket!(
+    key,
+    String(ratePerSecond),
+    String(Math.max(1, capacity)),
+    "1",
+    String(BUCKET_TTL_MS),
+  );
+  return { allowed: allowed === 1, retryAfterMs: allowed === 1 ? 0 : Math.max(waitMs, 50) };
+}

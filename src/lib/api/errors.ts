@@ -1,9 +1,9 @@
 /**
  * Error model — SRS §14.
  *
- * The code set is closed: these are exactly the codes the SRS defines. New
- * failure shapes are mapped onto an existing code rather than inventing one,
- * so the public API contract stays stable across phases.
+ * The code set is closed: the codes the SRS defines, plus RATE_LIMITED (see
+ * below). New failure shapes are mapped onto an existing code rather than
+ * inventing one, so the public API contract stays stable across phases.
  */
 export const ERROR_CODES = {
   INVALID_REQUEST: "INVALID_REQUEST",
@@ -14,6 +14,13 @@ export const ERROR_CODES = {
   SES_REJECTED: "SES_REJECTED",
   QUEUE_UNAVAILABLE: "QUEUE_UNAVAILABLE",
   INTERNAL_ERROR: "INTERNAL_ERROR",
+  /**
+   * Phase 7. SRS §7 requires "429 application rate limit exceeded" but §14's
+   * code table has no code for it. SES_THROTTLED would tell the caller that
+   * *AWS* throttled them, which is false, so this one addition is made to the
+   * otherwise closed set.
+   */
+  RATE_LIMITED: "RATE_LIMITED",
 } as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[keyof typeof ERROR_CODES];
@@ -28,6 +35,7 @@ const HTTP_STATUS: Record<ErrorCode, number> = {
   SES_REJECTED: 502,
   QUEUE_UNAVAILABLE: 503,
   INTERNAL_ERROR: 500,
+  RATE_LIMITED: 429,
 };
 
 export interface ErrorEnvelope {

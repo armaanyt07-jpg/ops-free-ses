@@ -171,7 +171,7 @@ export interface FailureDetails {
   sesRequestId: string | null;
   retryable: boolean;
   /** Why the message stopped: exhausted retries, or a permanent rejection. */
-  terminalReason?: "attempts_exhausted" | "permanent" | "no_credential" | undefined;
+  terminalReason?: "attempts_exhausted" | "permanent" | "no_credential" | "job_lost" | undefined;
   attempt?: number | undefined;
 }
 

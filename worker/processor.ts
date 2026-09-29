@@ -61,6 +61,17 @@ export function createSendProcessor({ redis }: ProcessorDeps): SendProcessor {
       attempt,
     };
 
+    // SES already accepted this message on an earlier attempt, and only the
+    // bookkeeping failed (e.g. the database was down). Finish that; never call
+    // SES again — that would deliver the email twice.
+    if (job.data.acceptedBySes) {
+      const accepted = job.data.acceptedBySes;
+      await markSent(logId, { messageId: accepted.messageId, sesRequestId: accepted.requestId });
+      log.info({ event: "worker.sent", ...base, status: "sent", detail: "bookkeeping_retry_no_resend" });
+      await reconcileAfterSend(userId, accepted.messageId);
+      return;
+    }
+
     let credential;
     try {
       credential = await loadDeliveryCredential(userId, environment);
@@ -138,27 +149,16 @@ export function createSendProcessor({ redis }: ProcessorDeps): SendProcessor {
 
     await markSending(logId);
 
-    let messageId: string | null;
+    // Only the SES call is inside this try. A failure *after* SES accepted the
+    // message is not an SES failure, and must never be retried as a send.
+    let result: Awaited<ReturnType<typeof sendViaSes>>;
     try {
-      const result = await sendViaSes(credential.credentials, {
+      result = await sendViaSes(credential.credentials, {
         from: job.data.from,
         to: job.data.to,
         subject: job.data.subject,
         html: job.data.html,
         text: job.data.text,
-      });
-
-      await markSent(logId, {
-        messageId: result.messageId,
-        sesRequestId: result.requestId,
-      });
-      messageId = result.messageId;
-
-      log.info({
-        event: "worker.sent",
-        ...base,
-        status: "sent",
-        recipientCount: job.data.to.length,
       });
     } catch (error) {
       const classified = classifySesError(error);
@@ -219,18 +219,46 @@ export function createSendProcessor({ redis }: ProcessorDeps): SendProcessor {
       throw error;
     }
 
-    // Apply any SNS event that raced ahead of `markSent` (see
-    // `reconcileEventsForLog`). Never allowed to throw: SES has accepted the
-    // message, and an error escaping here would make BullMQ retry the job —
-    // sending the email a second time.
-    if (messageId) {
-      await reconcileEventsForLog(userId, messageId).catch((error: unknown) => {
-        log.warn({
-          event: "worker.reconcile_failed",
-          ...base,
-          detail: error instanceof Error ? error.name : "unknown",
-        });
+    // SES has accepted the message. Record that on the job (in Redis) before
+    // anything else can fail, so a retry finishes the bookkeeping instead of
+    // sending again. If even this write fails we carry on: the remaining
+    // duplicate window is the milliseconds between SES answering and here.
+    await job
+      .updateData({
+        ...job.data,
+        acceptedBySes: { messageId: result.messageId, requestId: result.requestId, at: new Date().toISOString() },
+      })
+      .catch((error: unknown) => {
+        log.warn({ event: "worker.accept_record_failed", ...base, detail: error instanceof Error ? error.name : "unknown" });
       });
-    }
+
+    // If this throws (database down), BullMQ retries; the retry takes the
+    // acceptedBySes path above and does not call SES.
+    await markSent(logId, { messageId: result.messageId, sesRequestId: result.requestId });
+
+    log.info({
+      event: "worker.sent",
+      ...base,
+      status: "sent",
+      recipientCount: job.data.to.length,
+    });
+
+    await reconcileAfterSend(userId, result.messageId);
   };
+
+  /**
+   * Apply any SNS event that raced ahead of `markSent` (see
+   * `reconcileEventsForLog`). Never allowed to throw: SES has accepted the
+   * message, and an error escaping here would make BullMQ retry the job.
+   */
+  async function reconcileAfterSend(userId: string, messageId: string | null): Promise<void> {
+    if (!messageId) return;
+    await reconcileEventsForLog(userId, messageId).catch((error: unknown) => {
+      log.warn({
+        event: "worker.reconcile_failed",
+        requestId: "worker",
+        detail: error instanceof Error ? error.name : "unknown",
+      });
+    });
+  }
 }

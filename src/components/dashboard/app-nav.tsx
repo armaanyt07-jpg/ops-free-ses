@@ -20,6 +20,8 @@ import {
 } from "lucide-react";
 
 import { switchEnvironment } from "@/app/dashboard/actions";
+import { Wordmark } from "@/components/brand/wordmark";
+import { EnvironmentBadge } from "@/components/dashboard/primitives";
 import type { Environment } from "@/db/schema";
 
 /**
@@ -82,6 +84,12 @@ function EnvironmentSwitcher({ environment }: { environment: Environment }) {
           }`}
         />
         <select
+          // Remounts whenever the server-resolved environment changes, so
+          // this stays correct even when it wasn't this exact <select> that
+          // triggered the change (e.g. the mobile switcher, or a stale
+          // client-side render) — `defaultValue` alone only applies once, at
+          // first mount, and silently ignores later prop updates.
+          key={environment}
           id="env-switcher"
           name="environment"
           defaultValue={environment}
@@ -122,7 +130,7 @@ function NavLinks({ pathname, onNavigate }: { pathname: string; onNavigate?: () 
                 aria-current={active ? "page" : undefined}
                 className={`flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors ${
                   active
-                    ? "bg-muted text-foreground font-medium"
+                    ? "bg-primary/10 text-primary font-medium"
                     : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
                 }`}
               >
@@ -169,11 +177,8 @@ export function AppNav({ email, environment }: { email: string; environment: Env
   }, [open]);
 
   const brand = (
-    <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
-      <span className="bg-foreground text-background grid size-7 place-items-center rounded-md text-xs">
-        SES
-      </span>
-      Ops-Free SES
+    <Link href="/dashboard">
+      <Wordmark />
     </Link>
   );
 
@@ -193,14 +198,8 @@ export function AppNav({ email, environment }: { email: string; environment: Env
       <header className="bg-background/95 sticky top-0 z-30 border-b backdrop-blur lg:hidden">
         <div className="flex h-14 items-center gap-3 px-4">
           {brand}
-          <span
-            className={`ml-auto rounded-full px-2 py-0.5 text-xs font-medium ${
-              environment === "production"
-                ? "bg-emerald-50 text-emerald-800"
-                : "bg-amber-50 text-amber-800"
-            }`}
-          >
-            {environment}
+          <span className="ml-auto">
+            <EnvironmentBadge environment={environment} />
           </span>
           <button
             type="button"

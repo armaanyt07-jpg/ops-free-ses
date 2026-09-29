@@ -2,7 +2,7 @@ import { NextResponse, after, type NextRequest } from "next/server";
 
 import { ERROR_CODES, errorEnvelope, statusForCode } from "@/lib/api/errors";
 import { log } from "@/lib/api/logger";
-import { resolveRequestId } from "@/lib/api/request-id";
+import { rateLimited, withErrorBoundary, readBoundedBody } from "@/lib/api/http";
 import {
   idempotencyKeySchema,
   normaliseRecipients,
@@ -11,6 +11,7 @@ import {
 import { parseBearerToken } from "@/lib/crypto/api-key";
 import { authenticateApiKey, touchApiKey } from "@/server/api-keys";
 import { renderInline } from "@/lib/templates/engine";
+import { checkLimit, clientIp } from "@/server/abuse";
 import { acceptSend } from "@/server/send-service";
 import { renderTemplateForSend } from "@/server/templates";
 
@@ -21,6 +22,9 @@ import { renderTemplateForSend } from "@/server/templates";
  * Never statically cached.
  */
 export const runtime = "nodejs";
+
+/** SES accepts far larger messages; this bounds what one request can buffer. */
+const MAX_BODY_BYTES = 2 * 1024 * 1024;
 export const dynamic = "force-dynamic";
 
 function failure(
@@ -38,9 +42,18 @@ function failure(
   );
 }
 
-export async function POST(request: NextRequest): Promise<NextResponse> {
+export const POST = withErrorBoundary("send", handle);
+
+async function handle(request: NextRequest, requestId: string): Promise<NextResponse> {
   const startedAt = Date.now();
-  const requestId = resolveRequestId(request.headers.get("x-request-id"));
+
+  // 0. Per-IP limit, before any database work: a flood of junk keys must not
+  // become a flood of key lookups (Phase 7).
+  const ipLimit = await checkLimit("ip", clientIp(request.headers), requestId);
+  if (!ipLimit.allowed) {
+    log.warn({ event: "send.rate_limited", requestId, detail: "ip" });
+    return rateLimited(requestId, ipLimit.retryAfterMs);
+  }
 
   // 1. Authenticate. The raw header is never logged (SRS §9).
   const presented = parseBearerToken(request.headers.get("authorization"));
@@ -75,10 +88,25 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   const { userId, environment, keyId } = auth.key;
 
-  // 2. Validate the body against the published contract.
+  // 1b. Per-key limit — SRS §7 "429 application rate limit exceeded".
+  const keyLimit = await checkLimit("apiKey", keyId, requestId);
+  if (!keyLimit.allowed) {
+    log.warn({ event: "send.rate_limited", requestId, userId, environment, apiKeyId: keyId, detail: "api_key" });
+    return rateLimited(requestId, keyLimit.retryAfterMs);
+  }
+
+  // 2. Validate the body against the published contract. The body is read
+  // with a hard ceiling; `request.json()` has none.
+  const body_ = await readBoundedBody(request, MAX_BODY_BYTES);
+  if (!body_.ok) {
+    return NextResponse.json(
+      errorEnvelope(ERROR_CODES.INVALID_REQUEST, `Request body exceeds ${MAX_BODY_BYTES / 1024 / 1024} MB.`, requestId),
+      { status: 413, headers: { "X-Request-Id": requestId } },
+    );
+  }
   let raw: unknown;
   try {
-    raw = await request.json();
+    raw = JSON.parse(body_.text);
   } catch {
     return failure(
       "INVALID_REQUEST",

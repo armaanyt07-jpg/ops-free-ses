@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
+import { log } from "@/lib/api/logger";
+
 import { environmentEnum } from "@/db/schema";
 import {
   createApiKey,
@@ -49,6 +51,7 @@ export async function createKey(
     parsed.data.environment,
   );
 
+  log.security("api_key.created", tenant.id, `${created.summary.id} ${created.summary.environment}`);
   revalidatePath("/dashboard/api-keys");
 
   return { secret: created.secret };
@@ -60,7 +63,9 @@ export async function revokeKey(formData: FormData): Promise<void> {
   const keyId = z.string().uuid().safeParse(formData.get("id"));
   if (!keyId.success) return;
 
-  await revokeApiKey(tenant.id, keyId.data);
+  if (await revokeApiKey(tenant.id, keyId.data)) {
+    log.security("api_key.revoked", tenant.id, keyId.data);
+  }
   revalidatePath("/dashboard/api-keys");
 }
 
@@ -89,6 +94,7 @@ export async function rotateKey(
     return { error: "That key is no longer active, so it cannot be rotated." };
   }
 
+  log.security("api_key.rotated", tenant.id, `${keyId.data} -> ${rotated.summary.id} grace=${grace}`);
   revalidatePath("/dashboard/api-keys");
   return {
     secret: rotated.secret,

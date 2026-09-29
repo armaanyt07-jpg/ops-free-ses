@@ -16,6 +16,6 @@ export const config = {
      * `getUser()` round trip on it would add a network call to the hot path
      * for no benefit, against the SRS §5 sub-100ms ingestion target.
      */
-    "/((?!api/|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!api/|_next/static|_next/image|favicon.ico|icon$|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

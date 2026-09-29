@@ -19,7 +19,7 @@ import {
 import { CheckBadge, DomainStatusBadge } from "@/components/dashboard/check-badge";
 import { DomainForm } from "@/components/dashboard/domain-form";
 import type { CheckStatus } from "@/lib/dns/checks";
-import { PageHeader } from "@/components/dashboard/primitives";
+import { PageHeader, Time } from "@/components/dashboard/primitives";
 import { listDomains, type DomainView } from "@/server/domains";
 import { getActiveEnvironment } from "@/server/environment";
 import { requireTenant } from "@/server/tenant";
@@ -102,7 +102,7 @@ function DomainCard({ view }: { view: DomainView }) {
         </div>
         <CardDescription>
           Last checked{" "}
-          {view.lastCheckedAt ? view.lastCheckedAt.toISOString() : "never"}.
+          {view.lastCheckedAt ? <Time date={view.lastCheckedAt} /> : "never"}.
           {view.status === "pending"
             ? " Checked automatically in the background, with increasing gaps, for about a day."
             : null}

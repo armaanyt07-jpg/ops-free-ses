@@ -2,6 +2,8 @@ import Link from "next/link";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { AMBER, GREEN } from "@/components/dashboard/badge-tones";
+import { cn } from "@/lib/utils";
 import {
   Card,
   CardContent,
@@ -17,6 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { PageHeader, Time } from "@/components/dashboard/primitives";
 import { getQueueHealth } from "@/server/queue-health";
 import { webhookStats } from "@/server/sns-events";
 import { requireTenant } from "@/server/tenant";
@@ -69,13 +72,10 @@ export default async function HealthPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Queue &amp; health</h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Queue depth, retries, dead-lettered jobs, worker heartbeats and
-          webhook lag.
-        </p>
-      </div>
+      <PageHeader
+        title="Queue & health"
+        description="Queue depth, retries, dead-lettered jobs, worker heartbeats and webhook lag."
+      />
 
       {!health.configured ? (
         <Alert>
@@ -182,7 +182,7 @@ export default async function HealthPage() {
                       {Math.round(w.staleMs / 1000)}s ago
                     </TableCell>
                     <TableCell>
-                      <Badge variant={w.healthy ? "default" : "destructive"}>
+                      <Badge variant="secondary" className={cn(w.healthy ? GREEN : AMBER)}>
                         {w.healthy ? "healthy" : "stale"}
                       </Badge>
                     </TableCell>
@@ -235,7 +235,7 @@ export default async function HealthPage() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card id="dead-letter" className="scroll-mt-6">
         <CardHeader>
           <CardTitle>Dead letter</CardTitle>
           <CardDescription>
@@ -262,8 +262,8 @@ export default async function HealthPage() {
               <TableBody>
                 {health.deadLetter.map((entry) => (
                   <TableRow key={entry.jobId}>
-                    <TableCell className="font-mono text-xs whitespace-nowrap">
-                      {entry.failedAt ? entry.failedAt.toISOString() : "—"}
+                    <TableCell className="text-xs whitespace-nowrap">
+                      {entry.failedAt ? <Time date={entry.failedAt} /> : "—"}
                     </TableCell>
                     <TableCell className="font-mono text-xs">
                       {entry.logId ? (

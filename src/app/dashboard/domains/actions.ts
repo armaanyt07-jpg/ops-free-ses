@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
+import { log } from "@/lib/api/logger";
+
 import { environmentEnum } from "@/db/schema";
 import {
   checkDomainIfStale,
@@ -45,6 +47,7 @@ export async function addDomain(
 
   try {
     const view = await onboardDomain({ userId: tenant.id, ...parsed.data });
+    log.security("domain.added", tenant.id, `${view.domain} ${view.environment}`);
     revalidatePath("/dashboard/domains");
 
     return {
@@ -81,6 +84,6 @@ export async function deleteDomain(formData: FormData): Promise<void> {
   const id = idSchema.safeParse(formData.get("id"));
   if (!id.success) return;
 
-  await removeDomain(tenant.id, id.data);
+  if (await removeDomain(tenant.id, id.data)) log.security("domain.removed", tenant.id, id.data);
   revalidatePath("/dashboard/domains");
 }

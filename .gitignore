@@ -41,3 +41,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# resilience / load test measurements (quoted in docs/testing/EVIDENCE.md)
+/test-results/
+
+# Playwright — the auth state file holds a live session cookie, never commit it
+/playwright-report/
+/playwright/.auth/

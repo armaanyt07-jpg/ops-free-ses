@@ -5,6 +5,8 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { GREEN } from "@/components/dashboard/badge-tones";
+import { cn } from "@/lib/utils";
 import { CredentialForm } from "@/components/dashboard/credential-form";
 import { Fields, PageHeader, Time } from "@/components/dashboard/primitives";
 import { RevalidateButton } from "@/components/dashboard/revalidate-button";
@@ -54,7 +56,7 @@ function CredentialCard({ credential }: { credential: CredentialSummary }) {
           <div className="space-y-1">
             <CardTitle className="flex flex-wrap items-center gap-2">
               {credential.environment === "production" ? "Production" : "Staging"} credential
-              <Badge variant={credential.active ? "default" : "secondary"}>
+              <Badge variant="secondary" className={cn(credential.active ? GREEN : undefined)}>
                 {credential.active ? "active" : "revoked"}
               </Badge>
             </CardTitle>

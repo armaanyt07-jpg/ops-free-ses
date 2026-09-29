@@ -184,13 +184,16 @@ export interface SendJobState {
 }
 
 export async function getSendJobState(
+  userId: string,
   logId: string,
 ): Promise<SendJobState | null | "unavailable"> {
   if (!isQueueConfigured()) return "unavailable";
 
   const lookup = (async () => {
     const job = await getSendQueue().getJob(jobIdForLog(logId));
-    if (!job) return null;
+    // Self-scoping (Phase 7): another tenant's job reads as absent, whatever
+    // the caller checked beforehand.
+    if (!job || (job.data as { userId?: string }).userId !== userId) return null;
     const state = await job.getState();
     return {
       state,

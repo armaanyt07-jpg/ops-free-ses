@@ -5,7 +5,7 @@ import { and, eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { awsCredentials, type Environment } from "@/db/schema";
 import {
-  decryptSecret,
+  decryptWithKeyring,
   encryptSecret,
   loadMasterKey,
 } from "@/lib/crypto/encryption";
@@ -95,6 +95,52 @@ function validationMessage(providerCode: string): string {
 
 function masterKey() {
   return loadMasterKey(serverEnv().ENCRYPTION_KEY);
+}
+
+/** Current key first, then the previous one during a rotation. */
+export function keyring(): Buffer[] {
+  const env = serverEnv();
+  return [
+    loadMasterKey(env.ENCRYPTION_KEY),
+    ...(env.ENCRYPTION_KEY_PREVIOUS ? [loadMasterKey(env.ENCRYPTION_KEY_PREVIOUS)] : []),
+  ];
+}
+
+/**
+ * Re-encrypts every stored credential under the current key — the second half
+ * of a key rotation. Idempotent: rows already on the current key are skipped.
+ * Each row is decrypted with the keyring and re-encrypted with the same
+ * tenant/environment binding, then written back only if unchanged since read.
+ */
+export async function reencryptAllCredentials(): Promise<{ total: number; rotated: number; failed: number }> {
+  const db = getDb();
+  const rows = await db.select().from(awsCredentials);
+  const keys = keyring();
+  let rotated = 0;
+  let failed = 0;
+
+  for (const row of rows) {
+    const aad = { userId: row.userId, environment: row.environment };
+    try {
+      const { plaintext, keyIndex } = decryptWithKeyring(row.secretAccessKeyCiphertext, keys, aad);
+      if (keyIndex === 0) continue;
+      const updated = await db
+        .update(awsCredentials)
+        .set({ secretAccessKeyCiphertext: encryptSecret(plaintext, keys[0]!, aad) })
+        .where(
+          and(
+            eq(awsCredentials.id, row.id),
+            eq(awsCredentials.secretAccessKeyCiphertext, row.secretAccessKeyCiphertext),
+          ),
+        )
+        .returning({ id: awsCredentials.id });
+      rotated += updated.length;
+    } catch {
+      failed += 1;
+    }
+  }
+
+  return { total: rows.length, rotated, failed };
 }
 
 function toSummary(row: typeof awsCredentials.$inferSelect): CredentialSummary {
@@ -254,9 +300,9 @@ export async function loadSesCredentials(
 
   if (!row) return null;
 
-  const secretAccessKey = decryptSecret(
+  const { plaintext: secretAccessKey } = decryptWithKeyring(
     row.secretAccessKeyCiphertext,
-    masterKey(),
+    keyring(),
     { userId, environment },
   );
 
@@ -298,9 +344,9 @@ export async function loadDeliveryCredential(
 
   if (!row) return null;
 
-  const secretAccessKey = decryptSecret(
+  const { plaintext: secretAccessKey } = decryptWithKeyring(
     row.secretAccessKeyCiphertext,
-    masterKey(),
+    keyring(),
     { userId, environment },
   );
 

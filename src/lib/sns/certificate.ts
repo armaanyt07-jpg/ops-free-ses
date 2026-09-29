@@ -18,10 +18,27 @@ const MAX_CACHE_ENTRIES = 50;
 
 const cache = new Map<string, X509Certificate>();
 
+/**
+ * Definitive failures are remembered too (Phase 7). Without this, every forged
+ * message naming a *different* nonexistent `.pem` on the SNS host costs one
+ * outbound HTTPS request — an attacker-driven amplification.
+ *
+ * Only *definitive* failures are cached: a 4xx from the SNS host, or a body
+ * that is not a certificate — i.e. the URL is wrong. Timeouts, network errors
+ * and 5xx are transient and never cached: SNS's default HTTP policy retries
+ * for only about a minute, and caching a transient blip across those retries
+ * would drop a genuine bounce.
+ */
+const FAILURE_TTL_MS = 5 * 60 * 1000;
+const failures = new Map<string, number>();
+
 export class CertificateFetchError extends Error {
-  constructor(message: string) {
+  /** True when retrying the same URL cannot succeed. */
+  readonly definitive: boolean;
+  constructor(message: string, definitive = false) {
     super(message);
     this.name = "CertificateFetchError";
+    this.definitive = definitive;
   }
 }
 
@@ -31,8 +48,26 @@ export async function fetchSigningCertificate(
   const cached = cache.get(url);
   if (cached) return cached;
 
+  const failedAt = failures.get(url);
+  if (failedAt !== undefined && Date.now() - failedAt < FAILURE_TTL_MS) {
+    throw new CertificateFetchError("Signing certificate recently unavailable");
+  }
+
+  try {
+    return await fetchAndCache(url);
+  } catch (error) {
+    if (error instanceof CertificateFetchError && error.definitive) {
+      if (failures.size >= 1_000) failures.delete(failures.keys().next().value!);
+      failures.set(url, Date.now());
+    }
+    throw error;
+  }
+}
+
+async function fetchAndCache(url: string): Promise<X509Certificate> {
+
   if (!isTrustedSnsUrl(url, { requirePem: true })) {
-    throw new CertificateFetchError("Untrusted signing certificate URL");
+    throw new CertificateFetchError("Untrusted signing certificate URL", true);
   }
 
   const response = await fetch(url, {
@@ -43,19 +78,20 @@ export async function fetchSigningCertificate(
   if (!response.ok) {
     throw new CertificateFetchError(
       `Signing certificate fetch returned HTTP ${response.status}`,
+      response.status >= 400 && response.status < 500,
     );
   }
 
   const body = await response.text();
   if (body.length > MAX_CERT_BYTES) {
-    throw new CertificateFetchError("Signing certificate is implausibly large");
+    throw new CertificateFetchError("Signing certificate is implausibly large", true);
   }
 
   let certificate: X509Certificate;
   try {
     certificate = new X509Certificate(body);
   } catch {
-    throw new CertificateFetchError("Signing certificate is not valid X.509");
+    throw new CertificateFetchError("Signing certificate is not valid X.509", true);
   }
 
   if (cache.size >= MAX_CACHE_ENTRIES) {

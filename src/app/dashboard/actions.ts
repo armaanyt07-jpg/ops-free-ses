@@ -7,6 +7,7 @@ import { z } from "zod";
 
 import { normaliseRecipients } from "@/lib/api/send-schema";
 import { getActiveEnvironment, isEnvironment, setActiveEnvironment } from "@/server/environment";
+import { checkLimit } from "@/server/abuse";
 import { acceptSend } from "@/server/send-service";
 import { requireTenant } from "@/server/tenant";
 
@@ -47,6 +48,12 @@ export async function sendTestEmail(
 ): Promise<TestSendState> {
   const tenant = await requireTenant();
   const environment = await getActiveEnvironment(tenant.id);
+
+  // Phase 7: test sends are real sends; bound them per tenant (10/minute).
+  const limit = await checkLimit("testSend", tenant.id);
+  if (!limit.allowed) {
+    return { error: `Too many test sends. Try again in ${Math.ceil(limit.retryAfterMs / 1000)}s.` };
+  }
 
   const parsed = testSendSchema.safeParse({
     from: formData.get("from"),

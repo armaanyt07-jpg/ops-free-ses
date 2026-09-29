@@ -1,18 +1,22 @@
 import Link from "next/link";
-import { AlertTriangle, CheckCircle2, Circle, OctagonAlert } from "lucide-react";
+import { AlertTriangle, ArrowRight, CheckCircle2, Circle, OctagonAlert } from "lucide-react";
 
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/dashboard/status-badge";
 import { TestSendForm } from "@/components/dashboard/test-send-form";
 import { VolumeChart } from "@/components/dashboard/volume-chart";
 import {
   EmptyState,
+  EnvironmentBadge,
   PageHeader,
   SegmentedLinks,
   StatTile,
   Time,
 } from "@/components/dashboard/primitives";
 import { formatCount, formatRate } from "@/lib/dashboard/format";
+import { cn } from "@/lib/utils";
 import { hintFor } from "@/lib/dashboard/error-hints";
 import { dayValue, parseWindow, type SearchParams } from "@/lib/dashboard/params";
 import { reputationLevel, THRESHOLDS, type ReputationLevel } from "@/lib/dashboard/reputation";
@@ -98,21 +102,27 @@ export default async function OverviewPage({
       done: Boolean(credential),
       label: `Add an AWS credential for ${environment}`,
       href: "/dashboard/aws",
+      shared: false,
     },
     {
       done: verifiedDomains > 0,
-      label: "Verify a sending domain",
+      label: `Verify a sending domain for ${environment}`,
       href: "/dashboard/domains",
+      shared: false,
     },
     {
       done: activeKeys > 0,
       label: `Create a ${environment} API key`,
       href: "/dashboard/api-keys",
+      shared: false,
     },
     {
       done: confirmedTopic,
       label: "Connect SNS for delivery, bounce and complaint events",
       href: "/dashboard/webhooks",
+      // SNS registration has no environment column (SRS schema) — it's one
+      // topic per tenant, shared by both environments, not a per-env gap.
+      shared: true,
     },
   ];
   const remaining = steps.filter((s) => !s.done).length;
@@ -128,19 +138,21 @@ export default async function OverviewPage({
       <PageHeader
         title="Overview"
         description={
-          <>
-            Sending in <strong className="text-foreground">{environment}</strong>
-            {credential ? (
-              <>
-                {" "}
-                via {credential.awsRegion}
-                {credential.account && !credential.account.productionAccessEnabled
-                  ? " · SES sandbox"
-                  : ""}
-              </>
-            ) : null}
-            .
-          </>
+          <span className="flex flex-wrap items-center gap-2">
+            <EnvironmentBadge environment={environment} />
+            <span>
+              {credential ? (
+                <>
+                  Sending via {credential.awsRegion}
+                  {credential.account && !credential.account.productionAccessEnabled
+                    ? " · SES sandbox"
+                    : ""}
+                </>
+              ) : (
+                "No AWS credential configured yet"
+              )}
+            </span>
+          </span>
         }
         actions={
           <SegmentedLinks
@@ -171,16 +183,32 @@ export default async function OverviewPage({
                 <li key={step.label}>
                   <Link
                     href={step.href}
-                    className="hover:bg-muted/60 flex items-center gap-2.5 rounded-md border px-3 py-2.5 text-sm"
+                    className={cn(
+                      "flex items-center gap-2.5 rounded-md border px-3 py-2.5 text-sm transition-colors",
+                      step.done ? "hover:bg-muted/60" : "hover:border-primary/40 hover:bg-primary/5",
+                    )}
                   >
                     {step.done ? (
                       <CheckCircle2 className="size-4 shrink-0 text-emerald-700" aria-label="Done" />
                     ) : (
                       <Circle className="text-muted-foreground size-4 shrink-0" aria-label="To do" />
                     )}
-                    <span className={step.done ? "text-muted-foreground line-through" : ""}>
-                      {step.label}
+                    <span className="min-w-0 flex-1">
+                      <span className={cn("block", step.done && "text-muted-foreground line-through")}>
+                        {step.label}
+                      </span>
+                      {step.shared ? (
+                        <span className="text-muted-foreground block text-xs font-normal">
+                          Shared across staging and production
+                        </span>
+                      ) : null}
                     </span>
+                    {!step.done ? (
+                      <span className="text-primary inline-flex shrink-0 items-center gap-1 text-xs font-medium">
+                        Set up
+                        <ArrowRight className="size-3.5" aria-hidden />
+                      </span>
+                    ) : null}
                   </Link>
                 </li>
               ))}
@@ -194,7 +222,12 @@ export default async function OverviewPage({
           Delivery statistics
         </h2>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
-          <StatTile label="Accepted" value={formatCount(stats.total)} href={activityHref()} />
+          <StatTile
+            label="Accepted"
+            value={formatCount(stats.total)}
+            hint={days === 1 ? "last 24 hours" : `last ${days} days`}
+            href={activityHref()}
+          />
           <StatTile
             label="Delivered"
             value={formatCount(stats.delivered)}
@@ -282,11 +315,11 @@ export default async function OverviewPage({
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
             {!queue.configured || !queue.reachable ? (
-              <p className="flex items-center gap-2 text-red-700">
-                <OctagonAlert className="size-4" aria-hidden />
-                {queue.configured ? "Queue unreachable" : "No queue configured"} — sends will
-                be refused with 503.
-              </p>
+              <Alert variant="destructive">
+                <OctagonAlert aria-hidden />
+                <AlertTitle>{queue.configured ? "Queue unreachable" : "No queue configured"}</AlertTitle>
+                <AlertDescription>Sends will be refused with a 503 until this is fixed.</AlertDescription>
+              </Alert>
             ) : (
               <>
                 <dl className="grid grid-cols-2 gap-2">
@@ -295,15 +328,39 @@ export default async function OverviewPage({
                       ["Waiting", queue.depth?.waiting],
                       ["Active", queue.depth?.active],
                       ["Delayed", queue.depth?.delayed],
-                      ["Dead-lettered", queue.depth?.failed],
                     ] as const
                   ).map(([label, value]) => (
                     <div key={label} className="rounded-md border px-3 py-2">
                       <dt className="text-muted-foreground text-xs">{label}</dt>
-                      <dd className="text-lg font-semibold">{value ?? 0}</dd>
+                      <dd className="text-lg font-semibold tabular-nums">{value ?? 0}</dd>
                     </div>
                   ))}
+                  <div className="rounded-md border px-3 py-2">
+                    <dt className="text-muted-foreground text-xs">Dead-lettered</dt>
+                    <dd
+                      className={cn(
+                        "text-lg font-semibold tabular-nums",
+                        (queue.depth?.failed ?? 0) > 0 && "text-amber-700 dark:text-amber-400",
+                      )}
+                    >
+                      {queue.depth?.failed ?? 0}
+                    </dd>
+                  </div>
                 </dl>
+                <p className="text-muted-foreground flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-xs">
+                  <span>
+                    Exhausted retries or permanently rejected, retained 14 days
+                    {(queue.depth?.failed ?? 0) > 0 ? "." : " — none right now."}
+                  </span>
+                  {(queue.depth?.failed ?? 0) > 0 ? (
+                    <Link
+                      href="/dashboard/health#dead-letter"
+                      className="text-primary shrink-0 font-medium hover:underline"
+                    >
+                      View queue →
+                    </Link>
+                  ) : null}
+                </p>
                 <p className="flex items-center gap-2">
                   {queue.workers.some((w) => w.healthy) ? (
                     <>
@@ -334,7 +391,15 @@ export default async function OverviewPage({
           <CardContent>
             {recent.rows.length === 0 ? (
               <EmptyState title={`Nothing sent in ${environment} yet`}>
-                Send a test below, or call <code>POST /api/v1/send</code>.
+                <p className="mb-3">
+                  Send a test email below, or call <code>POST /api/v1/send</code> from your code.
+                </p>
+                <Button asChild size="sm" variant="secondary">
+                  <a href="#send-test">
+                    Send your first message
+                    <ArrowRight className="size-3.5" aria-hidden />
+                  </a>
+                </Button>
               </EmptyState>
             ) : (
               <ul className="divide-y">

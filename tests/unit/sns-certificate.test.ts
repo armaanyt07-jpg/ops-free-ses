@@ -96,3 +96,26 @@ describe("confirmSubscription", () => {
     ).rejects.toThrow(/HTTP 403/);
   });
 });
+
+describe("negative cache (Phase 7)", () => {
+  it("remembers a definitive failure, so a forged URL costs one fetch, not one per message", async () => {
+    vi.stubGlobal("fetch", fetchMock);
+    fetchMock.mockResolvedValue(new Response("", { status: 404 }));
+    const url = "https://sns.us-east-1.amazonaws.com/forged-once.pem";
+    await expect(fetchSigningCertificate(url)).rejects.toThrow(/HTTP 404/);
+    await expect(fetchSigningCertificate(url)).rejects.toThrow(/recently unavailable/);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("never caches a transient failure — SNS retries must get a real second attempt", async () => {
+    vi.stubGlobal("fetch", fetchMock);
+    const url = "https://sns.us-east-1.amazonaws.com/transient.pem";
+    fetchMock.mockRejectedValueOnce(new TypeError("fetch failed"));
+    await expect(fetchSigningCertificate(url)).rejects.toThrow();
+    fetchMock.mockResolvedValueOnce(new Response("", { status: 503 }));
+    await expect(fetchSigningCertificate(url)).rejects.toThrow(/HTTP 503/);
+    fetchMock.mockResolvedValueOnce(new Response(signer.certPem));
+    await expect(fetchSigningCertificate(url)).resolves.toBeDefined();
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+});

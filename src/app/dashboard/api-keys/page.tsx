@@ -2,6 +2,8 @@ import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { AMBER, GREEN } from "@/components/dashboard/badge-tones";
+import { cn } from "@/lib/utils";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -32,11 +34,11 @@ function keyState(key: ApiKeySummary, now: number): KeyState {
   return "active";
 }
 
-const STATE_VARIANT: Record<KeyState, "default" | "outline" | "secondary"> = {
-  active: "default",
-  expiring: "outline",
-  expired: "secondary",
-  revoked: "secondary",
+const STATE_STYLE: Record<KeyState, { variant: "outline" | "secondary"; className?: string }> = {
+  active: { variant: "secondary", className: GREEN },
+  expiring: { variant: "secondary", className: AMBER },
+  expired: { variant: "secondary" },
+  revoked: { variant: "secondary" },
 };
 
 /** SRS §12 API Keys: "Create, revoke, rotate, environment scope". */
@@ -127,7 +129,9 @@ export default async function ApiKeysPage({
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-col items-start gap-0.5">
-                          <Badge variant={STATE_VARIANT[state]}>{state}</Badge>
+                          <Badge variant={STATE_STYLE[state].variant} className={cn(STATE_STYLE[state].className)}>
+                            {state}
+                          </Badge>
                           {state === "expiring" && key.expiresAt ? (
                             <span className="text-muted-foreground text-xs">
                               stops <Time date={key.expiresAt} />

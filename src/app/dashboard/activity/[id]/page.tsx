@@ -4,6 +4,8 @@ import { ArrowLeft } from "lucide-react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { GREEN } from "@/components/dashboard/badge-tones";
+import { cn } from "@/lib/utils";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -42,10 +44,10 @@ interface ProviderEvent {
   recipients?: Record<string, RecipientState>;
 }
 
-const OUTCOME_VARIANT: Record<string, "default" | "destructive" | "secondary"> = {
-  delivered: "default",
-  bounced: "destructive",
-  complained: "destructive",
+const OUTCOME_STYLE: Record<string, { variant: "destructive" | "secondary"; className?: string }> = {
+  delivered: { variant: "secondary", className: GREEN },
+  bounced: { variant: "destructive" },
+  complained: { variant: "destructive" },
 };
 
 function Mono({ children }: { children: React.ReactNode }) {
@@ -60,7 +62,7 @@ export default async function MessagePage({ params }: { params: Promise<{ id: st
 
   const { log, events } = detail;
   const [job, template] = await Promise.all([
-    getSendJobState(log.id),
+    getSendJobState(tenant.id, log.id),
     log.templateId ? getTemplate(tenant.id, log.templateId) : Promise.resolve(null),
   ]);
   const templateName = template?.name;
@@ -178,7 +180,12 @@ export default async function MessagePage({ params }: { params: Promise<{ id: st
                       <TableCell className="font-mono text-xs break-all whitespace-normal">{r}</TableCell>
                       <TableCell>
                         {o ? (
-                          <Badge variant={OUTCOME_VARIANT[o.status] ?? "secondary"}>{o.status}</Badge>
+                          <Badge
+                            variant={OUTCOME_STYLE[o.status]?.variant ?? "secondary"}
+                            className={cn(OUTCOME_STYLE[o.status]?.className)}
+                          >
+                            {o.status}
+                          </Badge>
                         ) : suppressed ? (
                           <Badge variant="outline">suppressed</Badge>
                         ) : (
@@ -223,7 +230,7 @@ export default async function MessagePage({ params }: { params: Promise<{ id: st
                 <li key={`${t.label}-${i}`} className="relative">
                   <span
                     aria-hidden
-                    className="bg-foreground absolute top-1.5 -left-[25px] size-2 rounded-full ring-4 ring-white"
+                    className="bg-foreground absolute top-1.5 -left-[25px] size-2 rounded-full ring-4 ring-background"
                   />
                   <p className="text-sm font-medium">{t.label}</p>
                   <p className="text-muted-foreground text-xs" title={formatDateTime(t.at)}>

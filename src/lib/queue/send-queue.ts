@@ -36,6 +36,12 @@ export interface SendJobData {
   subject: string;
   html?: string | undefined;
   text?: string | undefined;
+  /**
+   * Set by the worker the moment SES accepts the message (Phase 7). A retry
+   * that finds it skips SES entirely and only finishes the bookkeeping — so a
+   * database failure after a successful send can never send the email twice.
+   */
+  acceptedBySes?: { messageId: string | null; requestId: string | null; at: string } | undefined;
 }
 
 export const DEFAULT_JOB_OPTIONS: JobsOptions = {

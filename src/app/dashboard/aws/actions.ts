@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
+import { log } from "@/lib/api/logger";
+
 import { environmentEnum } from "@/db/schema";
 import {
   CredentialValidationError,
@@ -70,6 +72,7 @@ export async function saveCredential(
       ...parsed.data,
     });
 
+    log.security("credential.saved", tenant.id, `${parsed.data.environment} ${parsed.data.awsRegion}`);
     revalidatePath("/dashboard/aws");
     revalidatePath("/dashboard");
 
@@ -97,7 +100,9 @@ export async function toggleCredential(formData: FormData): Promise<void> {
   const active = formData.get("active") === "true";
   if (!credentialId.success) return;
 
-  await setCredentialActive(tenant.id, credentialId.data, active);
+  if (await setCredentialActive(tenant.id, credentialId.data, active)) {
+    log.security(active ? "credential.activated" : "credential.revoked", tenant.id, credentialId.data);
+  }
   revalidatePath("/dashboard/aws");
 }
 
@@ -107,7 +112,9 @@ export async function removeCredential(formData: FormData): Promise<void> {
   const credentialId = z.string().uuid().safeParse(formData.get("id"));
   if (!credentialId.success) return;
 
-  await deleteCredential(tenant.id, credentialId.data);
+  if (await deleteCredential(tenant.id, credentialId.data)) {
+    log.security("credential.deleted", tenant.id, credentialId.data);
+  }
   revalidatePath("/dashboard/aws");
 }
 

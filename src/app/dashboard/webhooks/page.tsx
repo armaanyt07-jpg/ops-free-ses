@@ -3,6 +3,8 @@ import { headers } from "next/headers";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { AMBER, GREEN } from "@/components/dashboard/badge-tones";
+import { cn } from "@/lib/utils";
 import {
   Card,
   CardContent,
@@ -18,6 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { PageHeader, Time } from "@/components/dashboard/primitives";
 import { TopicForm } from "@/components/dashboard/topic-form";
 import { listRecentEvents } from "@/server/sns-events";
 import { listTopics } from "@/server/sns-topics";
@@ -40,10 +43,10 @@ async function endpointUrl(): Promise<{ url: string; local: boolean }> {
   return { url: `${proto}://${host}${WEBHOOK_PATH}`, local };
 }
 
-const TOPIC_VARIANT: Record<string, "default" | "secondary" | "destructive"> = {
-  confirmed: "default",
-  pending: "secondary",
-  unsubscribed: "destructive",
+const TOPIC_STYLE: Record<string, { variant: "secondary" | "destructive"; className?: string }> = {
+  confirmed: { variant: "secondary", className: GREEN },
+  pending: { variant: "secondary", className: AMBER },
+  unsubscribed: { variant: "destructive" },
 };
 
 export default async function WebhooksPage() {
@@ -56,14 +59,10 @@ export default async function WebhooksPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-semibold">Webhooks</h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          SES reports deliveries, bounces and complaints through Amazon SNS.
-          Each message is signature-verified, matched to your topic, and
-          processed exactly once.
-        </p>
-      </div>
+      <PageHeader
+        title="Webhooks"
+        description="SES reports deliveries, bounces and complaints through Amazon SNS. Each message is signature-verified, matched to your topic, and processed exactly once."
+      />
 
       <Card>
         <CardHeader>
@@ -142,14 +141,17 @@ export default async function WebhooksPage() {
                       {topic.topicArn}
                     </TableCell>
                     <TableCell>
-                      <Badge variant={TOPIC_VARIANT[topic.status] ?? "secondary"}>
+                      <Badge
+                        variant={TOPIC_STYLE[topic.status]?.variant ?? "secondary"}
+                        className={cn(TOPIC_STYLE[topic.status]?.className)}
+                      >
                         {topic.status === "pending"
                           ? "awaiting confirmation"
                           : topic.status}
                       </Badge>
                     </TableCell>
-                    <TableCell className="font-mono text-xs whitespace-nowrap">
-                      {topic.lastMessageAt?.toISOString() ?? "never"}
+                    <TableCell className="text-xs whitespace-nowrap">
+                      {topic.lastMessageAt ? <Time date={topic.lastMessageAt} /> : "never"}
                     </TableCell>
                     <TableCell className="text-right">
                       <form action={deleteTopic}>
@@ -192,8 +194,8 @@ export default async function WebhooksPage() {
               <TableBody>
                 {events.map((e) => (
                   <TableRow key={e.id}>
-                    <TableCell className="font-mono text-xs whitespace-nowrap">
-                      {e.receivedAt.toISOString()}
+                    <TableCell className="text-xs whitespace-nowrap">
+                      <Time date={e.receivedAt} />
                     </TableCell>
                     <TableCell>{e.eventType ?? e.messageType}</TableCell>
                     <TableCell className="font-mono text-xs">

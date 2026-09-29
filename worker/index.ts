@@ -6,6 +6,7 @@ import { DelayedError, Worker } from "bullmq";
 config({ path: ".env.local" });
 
 import { log } from "@/lib/api/logger";
+import { reportError } from "@/lib/observability/errors";
 import { createRedis } from "@/lib/queue/connection";
 import {
   DOMAIN_QUEUE_NAME,
@@ -147,6 +148,25 @@ async function shutdown(signal: string): Promise<void> {
     process.exit(0);
   }
 }
+
+// Error monitoring (Phase 7). A stray rejection is reported and survived; an
+// uncaught exception leaves the process in an unknown state, so it is reported
+// and the process exits for the supervisor to restart it — in-flight jobs are
+// recovered by stalled-job detection, as for any crash.
+process.on("unhandledRejection", (reason) => {
+  reportError(reason, { source: "process" });
+});
+process.on("uncaughtException", (error) => {
+  reportError(error, { source: "process" });
+  process.exit(1);
+});
+worker.on("failed", (job, error) => {
+  // Expected failures (SES rejections, retries) are logged by the processor.
+  // Only errors it did not anticipate reach monitoring.
+  if (error && !["UnrecoverableError", "DelayedError", "DomainStillPendingError"].includes(error.name) && !("$metadata" in error)) {
+    reportError(error, { source: "worker", jobId: job?.id });
+  }
+});
 
 process.on("SIGTERM", () => void shutdown("SIGTERM"));
 process.on("SIGINT", () => void shutdown("SIGINT"));

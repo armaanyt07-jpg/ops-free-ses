@@ -44,7 +44,16 @@ function emit(level: LogLevel, fields: LogFields): void {
   }
 }
 
+/**
+ * Security-relevant changes made through the dashboard (Phase 7): who changed
+ * what. Never the secret itself — the typed fields leave nowhere to put one.
+ */
+function security(event: string, userId: string, detail?: string): void {
+  emit("info", { event: `security.${event}`, requestId: "dashboard", userId, detail });
+}
+
 export const log = {
+  security,
   debug: (fields: LogFields) => emit("debug", fields),
   info: (fields: LogFields) => emit("info", fields),
   warn: (fields: LogFields) => emit("warn", fields),

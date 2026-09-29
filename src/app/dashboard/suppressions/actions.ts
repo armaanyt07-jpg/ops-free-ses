@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
+import { log } from "@/lib/api/logger";
+
 import {
   addSuppression,
   removeSuppression,
@@ -46,6 +48,7 @@ async function change(
   try {
     const input = { userId: tenant.id, actor: tenant.email, ...parsed.data };
     const row = kind === "add" ? await addSuppression(input) : await removeSuppression(input);
+    log.security(`suppression.${kind === "add" ? "added" : "removed"}`, tenant.id, "manual change; see audit_logs");
     revalidatePath("/dashboard/suppressions");
     return {
       success:

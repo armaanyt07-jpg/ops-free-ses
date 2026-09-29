@@ -20,6 +20,17 @@ starts.
 | 4 | Product dashboard & developer experience | **Code complete** — see [`docs/PHASE-4.md`](docs/PHASE-4.md). Browser check at phone width pending |
 | 5 | Template system | **Code complete** — see [`docs/PHASE-5.md`](docs/PHASE-5.md). Browser check pending |
 | 6 | AWS sandbox exit assistant | **Code complete** — see [`docs/PHASE-6.md`](docs/PHASE-6.md). Browser check pending |
+| 7 | Production hardening | **Complete except deployment** — see [`docs/PHASE-7.md`](docs/PHASE-7.md). Evidence: [`docs/testing/EVIDENCE.md`](docs/testing/EVIDENCE.md) |
+
+## Documentation
+
+| | |
+| --- | --- |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | components, trust boundaries, a message's life, decisions |
+| [`docs/DESIGN-SYSTEM.md`](docs/DESIGN-SYSTEM.md) | dashboard tokens, shared components, semantic color, the SRS §20 design gate |
+| [`docs/security/AUDIT.md`](docs/security/AUDIT.md) | security audit findings and guards |
+| [`docs/testing/EVIDENCE.md`](docs/testing/EVIDENCE.md) | what has been tested, with measurements |
+| [`docs/operations/`](docs/operations/) | deployment, observability, runbook, backup and recovery |
 
 ## Stack
 
@@ -86,7 +97,9 @@ tests/                  Unit + integration (PGlite + real redis-server)
 ## Tests
 
 ```bash
-npm test                  # 586 tests
+npm test                  # 637 tests
+npm run test:resilience   # 13 stress / chaos / outage / replay tests
+npm run preflight         # pre-deploy checks against the target environment
 npm run typecheck
 npm run typecheck:worker
 ```

@@ -4,9 +4,10 @@ import { z } from "zod";
 import { environmentEnum } from "@/db/schema";
 import { ERROR_CODES, errorEnvelope, statusForCode } from "@/lib/api/errors";
 import { log } from "@/lib/api/logger";
-import { resolveRequestId } from "@/lib/api/request-id";
+import { rateLimited, withErrorBoundary } from "@/lib/api/http";
 import { parseBearerToken } from "@/lib/crypto/api-key";
 import { authenticateApiKey } from "@/server/api-keys";
+import { checkLimit, clientIp } from "@/server/abuse";
 import { checkDomainIfStale, findDomain } from "@/server/domains";
 
 /**
@@ -39,8 +40,14 @@ function failure(
   });
 }
 
-export async function GET(request: NextRequest): Promise<NextResponse> {
-  const requestId = resolveRequestId(request.headers.get("x-request-id"));
+export const GET = withErrorBoundary("domains.verify", handle);
+
+async function handle(request: NextRequest, requestId: string): Promise<NextResponse> {
+
+  // Per-IP limit before any database work (Phase 7). Verification itself is
+  // additionally bounded by the per-domain check cooldown.
+  const ipLimit = await checkLimit("ip", clientIp(request.headers), requestId);
+  if (!ipLimit.allowed) return rateLimited(requestId, ipLimit.retryAfterMs);
 
   const presented = parseBearerToken(request.headers.get("authorization"));
   const auth = presented ? await authenticateApiKey(presented) : null;

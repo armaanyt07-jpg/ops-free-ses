@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
+import { log } from "@/lib/api/logger";
+
 import { draftSchema, missingAnswers } from "@/lib/sandbox/request";
 import { getActiveEnvironment } from "@/server/environment";
 import { markReviewed, ReviewError, saveDraft } from "@/server/sandbox";
@@ -66,6 +68,7 @@ export async function reviewSandboxRequest(_prev: ReviewState, formData: FormDat
 
   try {
     await markReviewed(tenant.id, environment, tenant.email, parsed.data.hash);
+    log.security("sandbox_request.reviewed", tenant.id, environment);
   } catch (error) {
     if (error instanceof ReviewError) return { error: error.message };
     throw error;

@@ -19,6 +19,12 @@ const serverSchema = z.object({
     ),
   /** Base64-encoded 32-byte master key for AES-256-GCM credential encryption. */
   ENCRYPTION_KEY: z.string().min(1, "ENCRYPTION_KEY is required"),
+  /**
+   * The previous master key, during a rotation only (Phase 7). Decryption
+   * tries ENCRYPTION_KEY first, then this; `npm run rotate:encryption-key`
+   * re-encrypts every row under ENCRYPTION_KEY, after which this is removed.
+   */
+  ENCRYPTION_KEY_PREVIOUS: z.string().min(1).optional(),
   NODE_ENV: z
     .enum(["development", "test", "production"])
     .default("development"),
@@ -40,6 +46,7 @@ export function serverEnv(): ServerEnv {
   const parsed = serverSchema.safeParse({
     DATABASE_URL: process.env.DATABASE_URL,
     ENCRYPTION_KEY: process.env.ENCRYPTION_KEY,
+    ENCRYPTION_KEY_PREVIOUS: process.env.ENCRYPTION_KEY_PREVIOUS || undefined,
     NODE_ENV: process.env.NODE_ENV,
   });
 
@@ -72,4 +79,9 @@ export function publicEnv(): PublicEnv {
   }
 
   return parsed.data;
+}
+
+/** Test hook: forget the cached environment so a changed key is re-read. */
+export function resetServerEnvForTests(): void {
+  cachedServerEnv = undefined;
 }

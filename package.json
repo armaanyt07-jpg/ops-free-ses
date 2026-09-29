@@ -17,7 +17,15 @@
     "db:studio": "drizzle-kit studio",
     "worker": "tsx --tsconfig tsconfig.worker.json worker/index.ts",
     "worker:dev": "tsx watch --tsconfig tsconfig.worker.json worker/index.ts",
-    "typecheck:worker": "tsc --noEmit -p tsconfig.worker.json"
+    "typecheck:worker": "tsc --noEmit -p tsconfig.worker.json",
+    "rotate:encryption-key": "tsx --tsconfig tsconfig.worker.json scripts/rotate-encryption-key.ts",
+    "reconcile": "tsx --tsconfig tsconfig.worker.json scripts/reconcile.ts",
+    "test:resilience": "RESILIENCE=1 vitest run",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:report": "playwright show-report",
+    "load-test": "tsx --tsconfig tsconfig.worker.json scripts/load-test.ts",
+    "preflight": "tsx --tsconfig tsconfig.worker.json scripts/preflight.ts"
   },
   "dependencies": {
     "@aws-sdk/client-sesv2": "^3.1141.0",
@@ -42,8 +50,10 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@electric-sql/pglite": "^0.5.8",
     "@eslint/eslintrc": "^3",
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^26.6.3",
     "@types/react": "^19",

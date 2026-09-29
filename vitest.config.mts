@@ -35,7 +35,11 @@ export default defineConfig({
     environment: "node",
     globals: false,
     setupFiles: ["tests/support/setup.ts"],
-    include: ["tests/**/*.test.ts"],
+    // The resilience suite (stress, chaos, outage and replay tests) is slower
+    // and runs separately: `npm run test:resilience`.
+    include: process.env.RESILIENCE ? ["tests/resilience/**/*.test.ts"] : ["tests/**/*.test.ts"],
+    exclude: process.env.RESILIENCE ? [] : ["tests/resilience/**"],
+    testTimeout: process.env.RESILIENCE ? 180_000 : 5_000,
     pool: "forks",
   },
 });

@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { ERROR_CODES, errorEnvelope, statusForCode } from "@/lib/api/errors";
 import { log } from "@/lib/api/logger";
-import { resolveRequestId } from "@/lib/api/request-id";
+import { rateLimited, withErrorBoundary, readBoundedBody } from "@/lib/api/http";
 import { snsEnvelopeSchema } from "@/lib/sns/message";
 import { confirmSubscription } from "@/lib/sns/subscription";
 import { verifySnsSignature } from "@/lib/sns/verify";
@@ -10,6 +10,7 @@ import {
   processNotification,
   recordSubscriptionMessage,
 } from "@/server/sns-events";
+import { checkLimit, clientIp } from "@/server/abuse";
 import { findTopicByArn } from "@/server/sns-topics";
 
 /**
@@ -59,21 +60,24 @@ function ok(requestId: string, body: Record<string, unknown>): NextResponse {
   });
 }
 
-export async function POST(request: NextRequest): Promise<NextResponse> {
-  const startedAt = Date.now();
-  const requestId = resolveRequestId(request.headers.get("x-request-id"));
+export const POST = withErrorBoundary("webhooks.aws-sns", handle);
 
-  const declared = Number(request.headers.get("content-length") ?? "0");
-  if (declared > MAX_BODY_BYTES) {
-    return failure("INVALID_REQUEST", "Payload too large.", requestId, 413);
-  }
+async function handle(request: NextRequest, requestId: string): Promise<NextResponse> {
+  const startedAt = Date.now();
+
+  // Per-IP limit before signature work (Phase 7): verification can cost an
+  // outbound certificate fetch, so unauthenticated floods are bounded here.
+  const ipLimit = await checkLimit("webhookIp", clientIp(request.headers), requestId);
+  if (!ipLimit.allowed) return rateLimited(requestId, ipLimit.retryAfterMs);
 
   // SNS posts with `Content-Type: text/plain`, not JSON, so the body is read
-  // as text and parsed here rather than trusting the header.
-  const raw = await request.text();
-  if (raw.length > MAX_BODY_BYTES) {
+  // as text and parsed here rather than trusting the header. Bounded: a lying
+  // or absent Content-Length cannot make this buffer more than the ceiling.
+  const body = await readBoundedBody(request, MAX_BODY_BYTES);
+  if (!body.ok) {
     return failure("INVALID_REQUEST", "Payload too large.", requestId, 413);
   }
+  const raw = body.text;
 
   let json: unknown;
   try {
