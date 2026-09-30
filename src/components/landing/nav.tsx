@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { LayoutDashboard, Layers, Menu, Users, Workflow, X } from "lucide-react";
+import { LayoutDashboard, Layers, ListChecks, Menu, Users, Workflow, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -13,6 +13,7 @@ import { Wordmark } from "@/components/brand/wordmark";
 const PRODUCT_ITEMS: NavDropdownItem[] = [
   { href: "#problem", label: "Why Ops-Free", description: "The problem with raw SES", icon: Layers },
   { href: "#how-it-works", label: "How it works", description: "Architecture overview", icon: Workflow },
+  { href: "#get-started", label: "Get started", description: "Steps to send your first email", icon: ListChecks },
   { href: "#dashboard", label: "Dashboard", description: "Product preview", icon: LayoutDashboard },
   { href: "#audience", label: "Who it's for", description: "Teams and developers Ops-Free fits", icon: Users },
 ];

@@ -57,7 +57,7 @@ export function DashboardPreview() {
   return (
     <section id="dashboard" className="bg-muted/30 border-b">
       <div className="mx-auto max-w-6xl px-6 py-20 sm:py-28">
-        <SectionKicker index="05" label="Product" />
+        <SectionKicker index="06" label="Product" />
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <h2 className="max-w-2xl text-4xl font-semibold tracking-tight text-balance sm:text-[2.75rem]">
             One dashboard for delivery, domains and keys.

@@ -39,7 +39,7 @@ export function Audience() {
   return (
     <section id="audience" className="bg-muted/30 border-b">
       <div className="mx-auto max-w-6xl px-6 py-20 sm:py-28">
-        <SectionKicker index="07" label="Who it's for" />
+        <SectionKicker index="08" label="Who it's for" />
         <h2 className="max-w-2xl text-4xl font-semibold tracking-tight text-balance sm:text-[2.75rem]">
           Built for people already shipping on AWS.
         </h2>

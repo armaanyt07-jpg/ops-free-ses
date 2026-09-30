@@ -8,6 +8,7 @@ import { DashboardPreview } from "@/components/landing/dashboard-preview";
 import { FinalCta } from "@/components/landing/final-cta";
 import { Flow } from "@/components/landing/flow";
 import { LandingFooter } from "@/components/landing/footer";
+import { GetStarted } from "@/components/landing/get-started";
 import { Hero } from "@/components/landing/hero";
 import { LandingNav } from "@/components/landing/nav";
 import { Problems } from "@/components/landing/problems";
@@ -33,6 +34,9 @@ export default async function Home() {
         </Reveal>
         <Reveal>
           <Flow />
+        </Reveal>
+        <Reveal>
+          <GetStarted />
         </Reveal>
         <Reveal>
           <ApiExample />

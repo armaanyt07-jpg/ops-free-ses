@@ -6,7 +6,7 @@ export function Cost() {
   return (
     <section className="border-b">
       <div className="mx-auto max-w-6xl px-6 py-20 sm:py-28">
-        <SectionKicker index="06" label="Cost model" />
+        <SectionKicker index="07" label="Cost model" />
         <div className="grid gap-14 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
           <div>
             <h2 className="text-4xl font-semibold tracking-tight text-balance sm:text-[2.75rem]">

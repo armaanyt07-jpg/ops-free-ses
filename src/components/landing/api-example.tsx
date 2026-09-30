@@ -29,7 +29,7 @@ export function ApiExample() {
   return (
     <section id="api" className="border-b">
       <div className="mx-auto max-w-6xl px-6 py-20 sm:py-28">
-        <SectionKicker index="04" label="Developer experience" />
+        <SectionKicker index="05" label="Developer experience" />
         <div className="grid gap-14 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:items-start">
           <div>
             <h2 className="text-4xl font-semibold tracking-tight text-balance sm:text-[2.75rem]">
