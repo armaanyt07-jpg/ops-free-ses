@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  hostingPlatform,
   analyzeDkim,
   analyzeDmarc,
   analyzeSpf,
@@ -225,4 +226,23 @@ describe("normaliseDomain", () => {
   ])("rejects %j", (input) => {
     expect(normaliseDomain(input)).toBeNull();
   });
+});
+
+describe("hostingPlatform (Phase 8)", () => {
+  it.each([
+    ["myapp.vercel.app", "Vercel"],
+    ["https://myapp.vercel.app/pricing", "Vercel"],
+    ["site.netlify.app", "Netlify"],
+    ["me.github.io", "GitHub Pages"],
+    ["x.pages.dev", "Cloudflare Pages"],
+  ])("recognises %s as %s", (input, name) => {
+    expect(hostingPlatform(input)).toBe(name);
+  });
+
+  it.each(["example.com", "vercel.com", "notvercel.app", "mail.example.co.uk", "::not a url"])(
+    "leaves %s alone",
+    (input) => {
+      expect(hostingPlatform(input)).toBeNull();
+    },
+  );
 });

@@ -5,19 +5,54 @@ import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
+import { log } from "@/lib/api/logger";
 import { normaliseRecipients } from "@/lib/api/send-schema";
-import { getActiveEnvironment, isEnvironment, setActiveEnvironment } from "@/server/environment";
+import { createApiKey } from "@/server/api-keys";
+import { getActiveEnvironment } from "@/server/environment";
+import { connectEvents, EventsSetupError } from "@/server/events-setup";
+import { webhookEndpoint } from "@/server/public-url";
 import { checkLimit } from "@/server/abuse";
 import { acceptSend } from "@/server/send-service";
 import { requireTenant } from "@/server/tenant";
 
-/** Environment switcher. A view preference only — see src/server/environment.ts. */
-export async function switchEnvironment(formData: FormData): Promise<void> {
-  await requireTenant();
-  const env = formData.get("environment");
-  if (!isEnvironment(env)) return;
-  await setActiveEnvironment(env);
+export interface QuickKeyState {
+  error?: string;
+  /** Shown once, like any new key. */
+  secret?: string;
+}
+
+/** Setup flow: one click, no form — a key named "Default" in the active environment. */
+export async function createQuickKey(_prev: QuickKeyState): Promise<QuickKeyState> {
+  const tenant = await requireTenant();
+  const environment = await getActiveEnvironment(tenant.id);
+  const created = await createApiKey(tenant.id, "Default", environment);
+  log.security("api_key.created", tenant.id, `${created.summary.id} ${environment}`);
   revalidatePath("/dashboard", "layout");
+  return { secret: created.secret };
+}
+
+export interface ConnectEventsState {
+  error?: string;
+  success?: string;
+}
+
+export async function connectEventsAction(_prev: ConnectEventsState): Promise<ConnectEventsState> {
+  const tenant = await requireTenant();
+  const environment = await getActiveEnvironment(tenant.id);
+  const endpoint = await webhookEndpoint();
+
+  try {
+    const result = await connectEvents(tenant.id, environment, endpoint.url);
+    log.security("sns_topic.connected", tenant.id, result.topicArn);
+    revalidatePath("/dashboard", "layout");
+    const domains = result.domains.length > 0 ? ` for ${result.domains.join(", ")}` : "";
+    return {
+      success: `Connected${domains}. Deliveries, bounces and complaints will now show up in Activity.`,
+    };
+  } catch (error) {
+    if (error instanceof EventsSetupError) return { error: error.message };
+    throw error;
+  }
 }
 
 /**

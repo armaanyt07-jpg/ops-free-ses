@@ -66,7 +66,7 @@ run as serverless request handlers.
 | Dashboard | developers | Supabase Auth session (JWT revalidated) | tenant from the session, never from input; every action calls `requireTenant()` |
 | Webhook | Amazon SNS | RSA signature (cert host-restricted) | topic ARN must be registered; its owner is the tenant |
 | Database | the app and worker only | `postgres` role | **Data API closed**: no anon/authenticated grants, RLS on every table |
-| AWS | the worker (and dashboard validation) | the customer's own IAM key, decrypted in memory | least privilege: `ses:GetAccount`, `SendEmail`, `CreateEmailIdentity`, `GetEmailIdentity` |
+| AWS | the worker (and dashboard validation) | the customer's own IAM key, decrypted in memory | least privilege, one policy in `src/lib/aws/iam-policy.ts`: SES send/identity; since Phase 8 also SES configuration sets + `sns:CreateTopic`/`Subscribe` ("Connect events") and optional Route 53 record writes |
 
 Secrets: AWS secret keys are AES-256-GCM encrypted with a master key held
 only in the server environment (rotatable, keyring). API keys are stored as

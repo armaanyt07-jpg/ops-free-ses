@@ -10,16 +10,21 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-function Submit({ environment }: { environment: string }) {
+function Submit({ label }: { label: string }) {
   const { pending } = useFormStatus();
   return (
     <Button type="submit" disabled={pending}>
-      {pending ? "Queueing…" : `Send in ${environment}`}
+      {pending ? "Queueing…" : label}
     </Button>
   );
 }
 
-export function TestSendForm({ environment }: { environment: string }) {
+export function TestSendForm({
+  defaultFrom,
+}: {
+  /** e.g. hello@<verified domain>, so the first send needs no typing. */
+  defaultFrom?: string;
+}) {
   const [state, action] = useActionState<TestSendState, FormData>(sendTestEmail, {});
 
   return (
@@ -32,6 +37,7 @@ export function TestSendForm({ environment }: { environment: string }) {
             name="from"
             type="email"
             placeholder="you@your-verified-domain.com"
+            defaultValue={defaultFrom}
             autoComplete="off"
             required
           />
@@ -72,7 +78,7 @@ export function TestSendForm({ environment }: { environment: string }) {
       {state.sent ? (
         <Alert>
           <AlertDescription>
-            Queued in {state.sent.environment}.{" "}
+            Queued.{" "}
             <Link
               href={`/dashboard/activity/${state.sent.logId}`}
               className="font-medium underline underline-offset-4"
@@ -84,7 +90,7 @@ export function TestSendForm({ environment }: { environment: string }) {
       ) : null}
 
       <div className="flex flex-wrap items-center gap-3">
-        <Submit environment={environment} />
+        <Submit label="Send test email" />
         <p className="text-muted-foreground text-xs">
           The sender must be verified in SES. SES&apos;s mailbox simulator addresses
           (<code>success@</code>, <code>bounce@</code>, <code>complaint@simulator.amazonses.com</code>)

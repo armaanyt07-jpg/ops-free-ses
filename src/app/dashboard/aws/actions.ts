@@ -5,7 +5,6 @@ import { z } from "zod";
 
 import { log } from "@/lib/api/logger";
 
-import { environmentEnum } from "@/db/schema";
 import {
   CredentialValidationError,
   deleteCredential,
@@ -13,6 +12,7 @@ import {
   setCredentialActive,
   storeCredential,
 } from "@/server/credentials";
+import { DASHBOARD_ENVIRONMENT } from "@/server/environment";
 import { requireTenant } from "@/server/tenant";
 
 /**
@@ -23,7 +23,6 @@ import { requireTenant } from "@/server/tenant";
  * tenant's credentials.
  */
 const storeSchema = z.object({
-  environment: z.enum(environmentEnum.enumValues),
   // AWS access key ids are 16–128 uppercase alphanumerics in practice.
   accessKeyId: z
     .string()
@@ -55,7 +54,6 @@ export async function saveCredential(
   const tenant = await requireTenant();
 
   const parsed = storeSchema.safeParse({
-    environment: formData.get("environment"),
     accessKeyId: formData.get("accessKeyId"),
     secretAccessKey: formData.get("secretAccessKey"),
     awsRegion: formData.get("awsRegion"),
@@ -69,10 +67,11 @@ export async function saveCredential(
   try {
     const { account } = await storeCredential({
       userId: tenant.id,
+      environment: DASHBOARD_ENVIRONMENT,
       ...parsed.data,
     });
 
-    log.security("credential.saved", tenant.id, `${parsed.data.environment} ${parsed.data.awsRegion}`);
+    log.security("credential.saved", tenant.id, `${DASHBOARD_ENVIRONMENT} ${parsed.data.awsRegion}`);
     revalidatePath("/dashboard/aws");
     revalidatePath("/dashboard");
 
@@ -81,7 +80,7 @@ export async function saveCredential(
       : "still in the SES sandbox";
 
     return {
-      success: `Credential validated and stored for ${parsed.data.environment} — ${sandbox}.`,
+      success: `Connected to AWS (${parsed.data.awsRegion}) — ${sandbox}.`,
     };
   } catch (error) {
     if (error instanceof CredentialValidationError) {
@@ -124,17 +123,12 @@ export interface RevalidateState {
 }
 
 /** Re-runs GetAccount and refreshes the stored quota and sandbox snapshot. */
-export async function revalidate(
-  _prev: RevalidateState,
-  formData: FormData,
-): Promise<RevalidateState> {
+export async function revalidate(_prev: RevalidateState): Promise<RevalidateState> {
   const tenant = await requireTenant();
-  const environment = z.enum(environmentEnum.enumValues).safeParse(formData.get("environment"));
-  if (!environment.success) return { error: "Unknown environment." };
 
   try {
-    const account = await revalidateCredential(tenant.id, environment.data);
-    if (!account) return { error: "No active credential for this environment." };
+    const account = await revalidateCredential(tenant.id, DASHBOARD_ENVIRONMENT);
+    if (!account) return { error: "No active AWS credential." };
   } catch (error) {
     if (error instanceof CredentialValidationError) return { error: error.message };
     return { error: "AWS could not be reached. Try again shortly." };

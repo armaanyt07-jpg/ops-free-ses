@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { GREEN } from "@/components/dashboard/badge-tones";
 import { cn } from "@/lib/utils";
 import { CredentialForm } from "@/components/dashboard/credential-form";
+import { IamSetup } from "@/components/dashboard/iam-setup";
 import { Fields, PageHeader, Time } from "@/components/dashboard/primitives";
 import { RevalidateButton } from "@/components/dashboard/revalidate-button";
 import { formatCount } from "@/lib/dashboard/format";
@@ -55,7 +56,7 @@ function CredentialCard({ credential }: { credential: CredentialSummary }) {
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="space-y-1">
             <CardTitle className="flex flex-wrap items-center gap-2">
-              {credential.environment === "production" ? "Production" : "Staging"} credential
+              AWS credential
               <Badge variant="secondary" className={cn(credential.active ? GREEN : undefined)}>
                 {credential.active ? "active" : "revoked"}
               </Badge>
@@ -64,7 +65,7 @@ function CredentialCard({ credential }: { credential: CredentialSummary }) {
               Last validated <Time date={credential.lastValidatedAt} fallback="never" />
             </CardDescription>
           </div>
-          {credential.active ? <RevalidateButton environment={credential.environment} /> : null}
+          {credential.active ? <RevalidateButton /> : null}
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -151,49 +152,44 @@ function CredentialCard({ credential }: { credential: CredentialSummary }) {
 /** SRS §12 AWS: "Credential status, region, quota snapshot, sandbox state". */
 export default async function AwsPage() {
   const tenant = await requireTenant();
-  const environment = await getActiveEnvironment(tenant.id);
-  const credentials = await listCredentials(tenant.id);
+  const [environment, credentials] = await Promise.all([
+    getActiveEnvironment(tenant.id),
+    listCredentials(tenant.id),
+  ]);
   const current = credentials.find((c) => c.environment === environment);
-  const other = credentials.find((c) => c.environment !== environment);
 
   return (
     <div className="space-y-8">
       <PageHeader
         title="AWS"
-        description="Your own SES account does the sending. Each environment has its own credential, validated against AWS before it is saved."
+        description="Your own SES account does the sending. The credential is validated against AWS before it is saved."
       />
 
       {current ? (
         <CredentialCard credential={current} />
       ) : (
         <Alert>
-          <AlertTitle>No {environment} credential</AlertTitle>
+          <AlertTitle>AWS isn&apos;t connected yet</AlertTitle>
           <AlertDescription>
-            Messages accepted in {environment} will fail with NO_ACTIVE_CREDENTIAL until one is
-            added below.
+            Nothing can be sent until a credential is added below.
           </AlertDescription>
         </Alert>
       )}
 
-      {other ? (
-        <p className="text-muted-foreground text-sm">
-          {other.environment === "production" ? "Production" : "Staging"} also has a credential (
-          {other.awsRegion}, {other.active ? "active" : "revoked"}) — switch environment to manage
-          it.
-        </p>
-      ) : null}
-
       <Card>
         <CardHeader>
-          <CardTitle>{current ? "Rotate or replace a credential" : "Add a credential"}</CardTitle>
+          <CardTitle>{current ? "Replace the credential" : "Connect your AWS account"}</CardTitle>
           <CardDescription>
-            Saving for an environment that already has one replaces it — that is how rotation
-            works. The IAM user needs <code>ses:GetAccount</code>, <code>ses:SendEmail</code>,{" "}
-            <code>ses:CreateEmailIdentity</code> and <code>ses:GetEmailIdentity</code>.
+            {current
+              ? "Saving a new key replaces the current one — that is how rotation works."
+              : "Three steps in the AWS console, then paste the key here."}{" "}
+            The policy below also lets us set up delivery events and, if your DNS is in Route 53,
+            publish your domain&apos;s records for you.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <CredentialForm defaultEnvironment={environment} />
+        <CardContent className="space-y-6">
+          <IamSetup />
+          <CredentialForm />
         </CardContent>
       </Card>
 

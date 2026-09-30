@@ -10,11 +10,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-function Submit({ environment }: { environment: string }) {
+function Submit() {
   const { pending } = useFormStatus();
   return (
     <Button type="submit" disabled={pending}>
-      {pending ? "Queueing…" : `Send test in ${environment}`}
+      {pending ? "Queueing…" : "Send test"}
     </Button>
   );
 }
@@ -28,13 +28,11 @@ export function TemplateTestForm({
   templateId,
   version,
   samples,
-  environment,
   archived,
 }: {
   templateId: string;
   version: number;
   samples: Record<string, string>;
-  environment: string;
   archived: boolean;
 }) {
   const [state, action] = useActionState<TemplateTestState, FormData>(sendTemplateTest, {});
@@ -85,7 +83,7 @@ export function TemplateTestForm({
       {state.sent ? (
         <Alert>
           <AlertDescription>
-            v{state.sent.version} queued in {state.sent.environment}.{" "}
+            v{state.sent.version} queued.{" "}
             <Link href={`/dashboard/activity/${state.sent.logId}`} className="font-medium underline underline-offset-4">
               Follow this message →
             </Link>
@@ -94,7 +92,7 @@ export function TemplateTestForm({
       ) : null}
 
       <div className="flex flex-wrap items-center gap-3">
-        <Submit environment={environment} />
+        <Submit />
         <p className="text-muted-foreground text-xs">Sends the saved v{version}, not unsaved edits.</p>
       </div>
     </form>

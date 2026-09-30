@@ -1,15 +1,16 @@
 import Link from "next/link";
-import { AlertTriangle, ArrowRight, CheckCircle2, Circle, OctagonAlert } from "lucide-react";
+import { AlertTriangle, ArrowRight, CheckCircle2, OctagonAlert } from "lucide-react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ConnectEventsButton } from "@/components/dashboard/setup-actions";
+import { SetupGuide } from "@/components/dashboard/setup-guide";
 import { StatusBadge } from "@/components/dashboard/status-badge";
 import { TestSendForm } from "@/components/dashboard/test-send-form";
 import { VolumeChart } from "@/components/dashboard/volume-chart";
 import {
   EmptyState,
-  EnvironmentBadge,
   PageHeader,
   SegmentedLinks,
   StatTile,
@@ -30,7 +31,9 @@ import {
 import { listApiKeys } from "@/server/api-keys";
 import { listCredentials } from "@/server/credentials";
 import { listDomains } from "@/server/domains";
+import { refreshPendingEmailIdentities } from "@/server/email-identities";
 import { getActiveEnvironment } from "@/server/environment";
+import { WEBHOOK_PATH, webhookEndpoint } from "@/server/public-url";
 import { getQueueHealth } from "@/server/queue-health";
 import { listTopics } from "@/server/sns-topics";
 import { requireTenant } from "@/server/tenant";
@@ -71,7 +74,7 @@ export default async function OverviewPage({
   const environment = await getActiveEnvironment(tenant.id);
   const days = parseWindow(params);
 
-  const [stats, series, queue, credentials, domains, keys, topics, recent, errors] =
+  const [stats, series, queue, credentials, domains, keys, topics, recent, errors, endpoint, emails] =
     await Promise.all([
       deliveryStats(tenant.id, environment, days),
       volumeSeries(tenant.id, environment, days),
@@ -82,12 +85,17 @@ export default async function OverviewPage({
       listTopics(tenant.id),
       searchActivity(tenant.id, environment, {}, 1, 8),
       errorGroups(tenant.id, environment, days),
+      webhookEndpoint(),
+      refreshPendingEmailIdentities(tenant.id),
     ]);
 
   const credential = credentials.find((c) => c.environment === environment && c.active);
-  const verifiedDomains = domains.filter(
-    (d) => d.environment === environment && d.status === "verified",
-  ).length;
+  const envDomains = domains.filter((d) => d.environment === environment);
+  const envEmails = emails.filter((e) => e.environment === environment);
+  // A verified domain or a verified address: either lets SES send.
+  const verifiedDomains =
+    envDomains.filter((d) => d.status === "verified").length +
+    envEmails.filter((e) => e.status === "verified").length;
   const now = Date.now();
   const activeKeys = keys.filter(
     (k) =>
@@ -95,37 +103,28 @@ export default async function OverviewPage({
       !k.revokedAt &&
       (!k.expiresAt || k.expiresAt.getTime() > now),
   ).length;
-  const confirmedTopic = topics.some((t) => t.status === "confirmed");
+  // SNS registration has no environment column for hand-registered topics
+  // (SRS schema), so a confirmed one counts for both environments.
+  const eventsConnected = topics.some(
+    (t) => t.status === "confirmed" || (t.managed && t.environment === environment),
+  );
 
-  const steps = [
-    {
-      done: Boolean(credential),
-      label: `Add an AWS credential for ${environment}`,
-      href: "/dashboard/aws",
-      shared: false,
-    },
-    {
-      done: verifiedDomains > 0,
-      label: `Verify a sending domain for ${environment}`,
-      href: "/dashboard/domains",
-      shared: false,
-    },
-    {
-      done: activeKeys > 0,
-      label: `Create a ${environment} API key`,
-      href: "/dashboard/api-keys",
-      shared: false,
-    },
-    {
-      done: confirmedTopic,
-      label: "Connect SNS for delivery, bounce and complaint events",
-      href: "/dashboard/webhooks",
-      // SNS registration has no environment column (SRS schema) — it's one
-      // topic per tenant, shared by both environments, not a per-env gap.
-      shared: true,
-    },
-  ];
-  const remaining = steps.filter((s) => !s.done).length;
+  // Phase 8: until this environment has sent something, the Overview is the
+  // setup guide — monitoring an empty account only looks broken. Once it has
+  // history, the dashboard stays, and anything unfinished is flagged below.
+  if (recent.total === 0) {
+    return (
+      <SetupGuide
+        credential={credential}
+        domains={envDomains}
+        emails={envEmails}
+        hasKey={activeKeys > 0}
+        eventsConnected={eventsConnected}
+        appUrl={endpoint.url.slice(0, -WEBHOOK_PATH.length)}
+        local={endpoint.local}
+      />
+    );
+  }
 
   // Tiles open Activity filtered to the same window, so the list a tile opens
   // is the list the tile counted (to day granularity).
@@ -139,7 +138,6 @@ export default async function OverviewPage({
         title="Overview"
         description={
           <span className="flex flex-wrap items-center gap-2">
-            <EnvironmentBadge environment={environment} />
             <span>
               {credential ? (
                 <>
@@ -169,53 +167,49 @@ export default async function OverviewPage({
         }
       />
 
-      {remaining > 0 ? (
+      {!credential || verifiedDomains === 0 || activeKeys === 0 ? (
+        <Alert>
+          <AlertTriangle aria-hidden />
+          <AlertTitle>Setup isn&apos;t finished</AlertTitle>
+          <AlertDescription>
+            <ul className="list-disc space-y-0.5 pl-4">
+              {!credential ? (
+                <li>
+                  No active AWS credential, so new sends will fail.{" "}
+                  <Link href="/dashboard/aws">Connect AWS</Link>
+                </li>
+              ) : null}
+              {verifiedDomains === 0 ? (
+                <li>
+                  No verified domain or email address, so SES will reject mail.{" "}
+                  <Link href="/dashboard/domains">Add a domain</Link>
+                </li>
+              ) : null}
+              {activeKeys === 0 ? (
+                <li>
+                  No active API key for your app.{" "}
+                  <Link href="/dashboard/api-keys">Create one</Link>
+                </li>
+              ) : null}
+            </ul>
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
+      {eventsConnected ? null : (
         <Card>
           <CardHeader>
-            <CardTitle>Finish setting up {environment}</CardTitle>
+            <CardTitle>Track deliveries and bounces</CardTitle>
             <CardDescription>
-              {steps.length - remaining} of {steps.length} done.
+              One click sets up Amazon SNS in your AWS account, so each email&apos;s outcome
+              shows up here and bounced addresses stop being sent to.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ol className="grid gap-2 sm:grid-cols-2">
-              {steps.map((step) => (
-                <li key={step.label}>
-                  <Link
-                    href={step.href}
-                    className={cn(
-                      "flex items-center gap-2.5 rounded-md border px-3 py-2.5 text-sm transition-colors",
-                      step.done ? "hover:bg-muted/60" : "hover:border-primary/40 hover:bg-primary/5",
-                    )}
-                  >
-                    {step.done ? (
-                      <CheckCircle2 className="size-4 shrink-0 text-emerald-700" aria-label="Done" />
-                    ) : (
-                      <Circle className="text-muted-foreground size-4 shrink-0" aria-label="To do" />
-                    )}
-                    <span className="min-w-0 flex-1">
-                      <span className={cn("block", step.done && "text-muted-foreground line-through")}>
-                        {step.label}
-                      </span>
-                      {step.shared ? (
-                        <span className="text-muted-foreground block text-xs font-normal">
-                          Shared across staging and production
-                        </span>
-                      ) : null}
-                    </span>
-                    {!step.done ? (
-                      <span className="text-primary inline-flex shrink-0 items-center gap-1 text-xs font-medium">
-                        Set up
-                        <ArrowRight className="size-3.5" aria-hidden />
-                      </span>
-                    ) : null}
-                  </Link>
-                </li>
-              ))}
-            </ol>
+            <ConnectEventsButton local={endpoint.local} />
           </CardContent>
         </Card>
-      ) : null}
+      )}
 
       <section aria-labelledby="stats-heading" className="space-y-4">
         <h2 id="stats-heading" className="sr-only">
@@ -273,14 +267,14 @@ export default async function OverviewPage({
           </p>
         </div>
 
-        {stats.reachedSes > 0 && stats.withOutcome === 0 ? (
+        {eventsConnected && stats.reachedSes > 0 && stats.withOutcome === 0 ? (
           <p className="rounded-md border border-dashed px-3 py-2 text-sm">
             {formatCount(stats.sent)} messages reached SES, but no delivery outcomes have
-            arrived. Outcomes come from SNS —{" "}
+            arrived yet. They usually take a few seconds —{" "}
             <Link href="/dashboard/webhooks" className="underline underline-offset-4">
-              connect a topic
+              check Webhooks
             </Link>{" "}
-            to see deliveries, bounces and complaints.
+            if they don&apos;t show up.
           </p>
         ) : null}
       </section>
@@ -311,7 +305,7 @@ export default async function OverviewPage({
         <Card>
           <CardHeader>
             <CardTitle>Queue</CardTitle>
-            <CardDescription>Live, across all environments.</CardDescription>
+            <CardDescription>Live.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
             {!queue.configured || !queue.reachable ? (
@@ -390,7 +384,7 @@ export default async function OverviewPage({
           </CardHeader>
           <CardContent>
             {recent.rows.length === 0 ? (
-              <EmptyState title={`Nothing sent in ${environment} yet`}>
+              <EmptyState title="Nothing sent yet">
                 <p className="mb-3">
                   Send a test email below, or call <code>POST /api/v1/send</code> from your code.
                 </p>
@@ -475,14 +469,14 @@ export default async function OverviewPage({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <TestSendForm environment={environment} />
+          <TestSendForm />
           <details>
             <summary className="text-muted-foreground hover:text-foreground cursor-pointer text-sm">
               The same request from code
             </summary>
             <pre className="bg-muted mt-2 overflow-x-auto rounded-md p-3 text-xs">
               {`curl -X POST ${"$"}OPS_URL/api/v1/send \\
-  -H "Authorization: Bearer ${environment === "production" ? "sk_live_…" : "sk_test_…"}" \\
+  -H "Authorization: Bearer sk_live_…" \\
   -H "Content-Type: application/json" \\
   -H "Idempotency-Key: $(uuidgen)" \\
   -d '{

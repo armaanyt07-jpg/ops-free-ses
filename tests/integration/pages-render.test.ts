@@ -11,7 +11,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { renderToReadableStream } from "react-dom/server.edge";
 import { createElement } from "react";
 
-import { emailLogs, snsEvents } from "@/db/schema";
+import { emailIdentities, emailLogs, snsEvents, verifiedDomains } from "@/db/schema";
 import { createTestUser } from "../support/factories";
 import { closeTestDb, getDb, resetTestDb } from "../support/test-db";
 import { startTestRedis, type TestRedis } from "../support/test-redis";
@@ -33,6 +33,7 @@ beforeAll(async () => {
   const { storeCredential } = await import("@/server/credentials");
   await storeCredential({ userId: tenant.current.id, environment: "production", accessKeyId: "AKIAIOSFODNN7EXAMPLE", secretAccessKey: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY", awsRegion: "ap-south-1" });
   const { createApiKey } = await import("@/server/api-keys"); await createApiKey(tenant.current.id, "k", "production");
+  await getDb().insert(verifiedDomains).values({ userId: tenant.current.id, domain: "acme.test", environment: "production", status: "verified", awsRegion: "ap-south-1", dkimTokens: ["t1", "t2", "t3"] });
   const tpl = await import("@/server/templates");
   const created = await tpl.createTemplate(tenant.current.id, "dev@example.test", {
     name: "welcome", subject: "Hi {{first_name}}", html: "<h1>Hello {{first_name}}</h1>", text: null,
@@ -58,24 +59,82 @@ async function html(node: unknown): Promise<string> {
 }
 
 const pages: Array<[string, () => Promise<unknown>, string[]]> = [
-  ["overview", async () => (await import("@/app/dashboard/page")).default({ searchParams: Promise.resolve({}) }), ["Volume by outcome", "Finish setting up", "Bounce rate"]],
+  ["overview", async () => (await import("@/app/dashboard/page")).default({ searchParams: Promise.resolve({}) }), ["Volume by outcome", "Track deliveries and bounces", "Bounce rate"]],
   ["overview 24h", async () => (await import("@/app/dashboard/page")).default({ searchParams: Promise.resolve({ window: "1" }) }), ["Hourly"]],
   ["activity", async () => (await import("@/app/dashboard/activity/page")).default({ searchParams: Promise.resolve({}) }), ["Subject delivered", "of 7"]],
   ["activity filtered", async () => (await import("@/app/dashboard/activity/page")).default({ searchParams: Promise.resolve({ error: "MessageRejected" }) }), ["Subject failed", "Showing error"]],
   ["activity empty", async () => (await import("@/app/dashboard/activity/page")).default({ searchParams: Promise.resolve({ q: "zzz-nothing" }) }), ["No messages match"]],
   ["message detail", async () => (await import("@/app/dashboard/activity/[id]/page")).default({ params: Promise.resolve({ id: logId }) }), ["Recipients", "Timeline", "Permanent", "campaign=x"]],
   ["errors", async () => (await import("@/app/dashboard/errors/page")).default({ searchParams: Promise.resolve({}) }), ["SES rejected the message", "Suppressed"]],
-  ["api keys", async () => (await import("@/app/dashboard/api-keys/page")).default({ searchParams: Promise.resolve({}) }), ["Production keys", "Rotate"]],
-  ["aws", async () => (await import("@/app/dashboard/aws/page")).default(), ["SES sandbox", "3 of 200"]],
-  ["domains", async () => (await import("@/app/dashboard/domains/page")).default(), ["No production domains yet"]],
+  ["api keys", async () => (await import("@/app/dashboard/api-keys/page")).default({ searchParams: Promise.resolve({}) }), ["Your keys", "Rotate"]],
+  ["aws", async () => (await import("@/app/dashboard/aws/page")).default(), ["SES sandbox", "3 of 200", "ses:CreateConfigurationSet"]],
+  ["domains", async () => (await import("@/app/dashboard/domains/page")).default(), ["acme.test", "DNS records to publish", "t1._domainkey.acme.test", "Email addresses", "Send confirmation email"]],
   ["suppressions", async () => (await import("@/app/dashboard/suppressions/page")).default({ searchParams: Promise.resolve({}) }), ["x@y.test", "Recent manual changes", "“why”"]],
-  ["webhooks", async () => (await import("@/app/dashboard/webhooks/page")).default(), ["Endpoint"]],
+  ["webhooks", async () => (await import("@/app/dashboard/webhooks/page")).default(), ["Connect automatically", "Set it up manually instead", "Endpoint"]],
   ["templates", async () => (await import("@/app/dashboard/templates/page")).default({ searchParams: Promise.resolve({}) }), ["welcome", "v2", "New template"]],
   ["new template", async () => (await import("@/app/dashboard/templates/new/page")).default(), ["Create template", "Welcome to Acme, Alice"]],
   ["template editor", async () => (await import("@/app/dashboard/templates/[id]/page")).default({ params: Promise.resolve({ id: templateId }), searchParams: Promise.resolve({}) }), ["Save new version", "Hey Ana", "Versions", "Send a test", templateId]],
   ["template old version", async () => (await import("@/app/dashboard/templates/[id]/page")).default({ params: Promise.resolve({ id: templateId }), searchParams: Promise.resolve({ v: "1" }) }), ["Viewing v1", "Restore as v3", "Hi Ana"]],
   ["health", async () => (await import("@/app/dashboard/health/page")).default(), ["Queue &amp; health"]],
 ];
+
+describe("first-run setup guide (Phase 8)", () => {
+  it("replaces the Overview for an account that cannot send yet", async () => {
+    const owner = tenant.current.id;
+    tenant.current.id = await createTestUser("new@example.test");
+    try {
+      const out = await html(await (await import("@/app/dashboard/page")).default({ searchParams: Promise.resolve({}) }));
+      for (const text of ["get you sending", "Connect your AWS account", "Create inline policy", "Verify where your emails come from", "0 of 3 done"]) {
+        expect(out).toContain(text);
+      }
+      expect(out).not.toContain("Volume by outcome");
+      // One environment: no picker, no badge, no staging anywhere.
+      expect(out).not.toContain('id="environment"');
+      expect(out.toLowerCase()).not.toContain("staging");
+    } finally {
+      tenant.current.id = owner;
+    }
+  }, 20_000);
+});
+
+describe("setup with an email address instead of a domain (Phase 8)", () => {
+  it("offers the address option and unlocks the test send once it's verified", async () => {
+    const owner = tenant.current.id;
+    tenant.current.id = await createTestUser("nodomain@example.test");
+    try {
+      const { storeCredential } = await import("@/server/credentials");
+      await storeCredential({ userId: tenant.current.id, environment: "production", accessKeyId: "AKIAIOSFODNN7EXAMPLE", secretAccessKey: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY", awsRegion: "ap-south-1" });
+      const render = async () => html(await (await import("@/app/dashboard/page")).default({ searchParams: Promise.resolve({}) }));
+
+      expect(await render()).toContain("Don&#x27;t have a domain? Send from your email address");
+
+      await getDb().insert(emailIdentities).values({ userId: tenant.current.id, email: "founder@gmail.test", environment: "production", status: "verified", awsRegion: "ap-south-1", lastCheckedAt: new Date() });
+      const out = await render();
+      expect(out).toContain("Sending as founder@gmail.test");
+      expect(out).toContain('value="founder@gmail.test"'); // test send's From
+      expect(out).toContain("2 of 3 done");
+    } finally {
+      tenant.current.id = owner;
+    }
+  }, 20_000);
+});
+
+describe("overview after the first send (Phase 8)", () => {
+  it("keeps the dashboard once anything was sent, and flags what's unfinished", async () => {
+    const owner = tenant.current.id;
+    tenant.current.id = await createTestUser("sent@example.test");
+    try {
+      await getDb().insert(emailLogs).values({ userId: tenant.current.id, environment: "production", status: "failed", fromAddress: "a@b.test", recipients: ["r@x.test"], subject: "s" });
+      const out = await html(await (await import("@/app/dashboard/page")).default({ searchParams: Promise.resolve({}) }));
+      expect(out).toContain("Volume by outcome");
+      expect(out).toContain("Setup isn&#x27;t finished");
+      expect(out).toContain("No verified domain");
+      expect(out).not.toContain("get you sending");
+    } finally {
+      tenant.current.id = owner;
+    }
+  }, 20_000);
+});
 
 describe("every dashboard page server-renders", () => {
   it.each(pages)("%s", async (_name, load, expected) => {

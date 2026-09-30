@@ -5,7 +5,6 @@ import { z } from "zod";
 
 import { log } from "@/lib/api/logger";
 
-import { environmentEnum } from "@/db/schema";
 import {
   createApiKey,
   revokeApiKey,
@@ -13,11 +12,11 @@ import {
   ROTATION_GRACE_OPTIONS,
   type RotationGrace,
 } from "@/server/api-keys";
+import { DASHBOARD_ENVIRONMENT } from "@/server/environment";
 import { requireTenant } from "@/server/tenant";
 
 const createSchema = z.object({
   name: z.string().trim().min(1, "Give the key a name").max(120),
-  environment: z.enum(environmentEnum.enumValues),
 });
 
 export interface ApiKeyFormState {
@@ -37,7 +36,6 @@ export async function createKey(
 
   const parsed = createSchema.safeParse({
     name: formData.get("name"),
-    environment: formData.get("environment"),
   });
 
   if (!parsed.success) {
@@ -48,7 +46,7 @@ export async function createKey(
   const created = await createApiKey(
     tenant.id,
     parsed.data.name,
-    parsed.data.environment,
+    DASHBOARD_ENVIRONMENT,
   );
 
   log.security("api_key.created", tenant.id, `${created.summary.id} ${created.summary.environment}`);

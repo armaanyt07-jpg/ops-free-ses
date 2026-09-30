@@ -64,8 +64,8 @@ export default async function SuppressionsPage({
         description={
           <>
             Addresses that will not be sent to. The API refuses them with{" "}
-            <code>RECIPIENT_SUPPRESSED</code> and the worker checks again just before SES. Shared
-            by staging and production; transient bounces never suppress.
+            <code>RECIPIENT_SUPPRESSED</code> and the worker checks again just before SES.
+            Transient bounces never suppress.
           </>
         }
       />

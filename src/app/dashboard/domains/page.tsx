@@ -8,23 +8,19 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { CheckBadge, DomainStatusBadge } from "@/components/dashboard/check-badge";
 import { DomainForm } from "@/components/dashboard/domain-form";
 import type { CheckStatus } from "@/lib/dns/checks";
+import { DnsRecords } from "@/components/dashboard/dns-records";
 import { PageHeader, Time } from "@/components/dashboard/primitives";
+import { EmailIdentityForm } from "@/components/dashboard/email-identity-form";
+import { EmailIdentityPending } from "@/components/dashboard/email-identity-status";
 import { listDomains, type DomainView } from "@/server/domains";
+import { refreshPendingEmailIdentities } from "@/server/email-identities";
 import { getActiveEnvironment } from "@/server/environment";
 import { requireTenant } from "@/server/tenant";
 
-import { checkDomainNow, deleteDomain } from "./actions";
+import { checkDomainNow, deleteDomain, deleteEmailIdentity } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -82,7 +78,6 @@ function DomainCard({ view }: { view: DomainView }) {
         <div className="flex flex-wrap items-center gap-3">
           <CardTitle className="font-mono text-lg">{view.domain}</CardTitle>
           <DomainStatusBadge status={view.status} />
-          <Badge variant="outline">{view.environment}</Badge>
           <Badge variant="outline">{view.region ?? "region unknown"}</Badge>
 
           <div className="flex w-full gap-2 sm:ml-auto sm:w-auto">
@@ -149,37 +144,7 @@ function DomainCard({ view }: { view: DomainView }) {
 
         <div className="space-y-2">
           <h3 className="text-sm font-medium">DNS records to publish</h3>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Purpose</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Value</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {view.records.map((record) => (
-                <TableRow key={`${record.type}-${record.name}`}>
-                  <TableCell>{record.purpose}</TableCell>
-                  <TableCell className="font-mono text-xs">{record.type}</TableCell>
-                  <TableCell className="font-mono text-xs break-all whitespace-normal select-all">
-                    {record.name}
-                  </TableCell>
-                  <TableCell className="font-mono text-xs break-all whitespace-normal select-all">
-                    {record.value}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          <p className="text-muted-foreground text-xs">
-            Many DNS providers add your domain to the name automatically — if
-            yours does, enter only the part before{" "}
-            <code>{view.domain}</code>. If you already publish an SPF record,
-            add <code>include:amazonses.com</code> to it rather than creating a
-            second one: two SPF records make SPF fail outright.
-          </p>
+          <DnsRecords domain={view.domain} records={view.records} />
         </div>
       </CardContent>
     </Card>
@@ -188,25 +153,19 @@ function DomainCard({ view }: { view: DomainView }) {
 
 export default async function DomainsPage() {
   const tenant = await requireTenant();
-  const environment = await getActiveEnvironment(tenant.id);
-  const all = await listDomains(tenant.id);
+  const [environment, all, allEmails] = await Promise.all([
+    getActiveEnvironment(tenant.id),
+    listDomains(tenant.id),
+    refreshPendingEmailIdentities(tenant.id),
+  ]);
+  const emails = allEmails.filter((e) => e.environment === environment);
   const domains = all.filter((d) => d.environment === environment);
-  const elsewhere = all.length - domains.length;
 
   return (
     <div className="space-y-8">
       <PageHeader
         title="Domains"
-        description={
-          <>
-            Sending domains are created as identities in your own SES account, in the region of
-            the environment&apos;s AWS credential. Showing{" "}
-            <strong className="text-foreground">{environment}</strong>
-            {elsewhere > 0
-              ? ` — ${elsewhere} more in the other environment.`
-              : "."}
-          </>
-        }
+        description="Sending domains are created as identities in your own SES account, in the region of your AWS credential."
       />
 
       <Card>
@@ -214,17 +173,17 @@ export default async function DomainsPage() {
           <CardTitle>Add a domain</CardTitle>
           <CardDescription>
             Creates the SES identity with Easy DKIM and lists the DNS records to
-            publish. Requires an active AWS credential for the environment.
+            publish. Requires a connected AWS account.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <DomainForm defaultEnvironment={environment} />
+          <DomainForm />
         </CardContent>
       </Card>
 
       {domains.length === 0 ? (
         <Alert>
-          <AlertTitle>No {environment} domains yet</AlertTitle>
+          <AlertTitle>No domains yet</AlertTitle>
           <AlertDescription>
             Until a domain is verified, SES rejects mail from it.
           </AlertDescription>
@@ -233,8 +192,43 @@ export default async function DomainsPage() {
         domains.map((view) => <DomainCard key={view.id} view={view} />)
       )}
 
+      <Card>
+        <CardHeader>
+          <CardTitle>Email addresses</CardTitle>
+          <CardDescription>
+            No domain? Verify a single address instead: Amazon emails it a confirmation link.
+            It keeps working after you go live; a domain of your own gets better inbox placement.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {emails.length > 0 ? (
+            <ul className="space-y-3">
+              {emails.map((identity) =>
+                identity.status === "verified" ? (
+                  <li key={identity.id} className="flex flex-wrap items-center gap-3 text-sm">
+                    <span className="font-mono">{identity.email}</span>
+                    <DomainStatusBadge status="verified" />
+                    <form action={deleteEmailIdentity} className="ml-auto">
+                      <input type="hidden" name="id" value={identity.id} />
+                      <Button type="submit" variant="ghost" size="sm">
+                        Remove
+                      </Button>
+                    </form>
+                  </li>
+                ) : (
+                  <li key={identity.id}>
+                    <EmailIdentityPending identity={identity} />
+                  </li>
+                ),
+              )}
+            </ul>
+          ) : null}
+          <EmailIdentityForm />
+        </CardContent>
+      </Card>
+
       <p className="text-muted-foreground text-xs">
-        Removing a domain here stops tracking it. The identity is left in your
+        Removing a domain or address here stops tracking it. The identity is left in your
         SES account, since other systems may send through it.
       </p>
     </div>

@@ -51,7 +51,8 @@ const suppression = await import("@/server/suppression");
 const { getQueueHealth } = await import("@/server/queue-health");
 const { storeCredential, listCredentials, revalidateCredential } = await import("@/server/credentials");
 const { getActiveEnvironment } = await import("@/server/environment");
-const { switchEnvironment, sendTestEmail } = await import("@/app/dashboard/actions");
+const { sendTestEmail, createQuickKey } = await import("@/app/dashboard/actions");
+const { createKey } = await import("@/app/dashboard/api-keys/actions");
 const { closeSendQueue, getSendQueue, SEND_QUEUE_NAME } = await import("@/lib/queue/send-queue");
 
 let userId: string;
@@ -460,9 +461,8 @@ describe("AWS account snapshot", () => {
   });
 });
 
-describe("environment switching", () => {
-  it("defaults to the environment that has a credential", async () => {
-    expect(await getActiveEnvironment(userId)).toBe("production");
+describe("single environment (Phase 8)", () => {
+  it("is always production, whatever credentials or cookies exist", async () => {
     await storeCredential({
       userId,
       environment: "staging",
@@ -470,24 +470,26 @@ describe("environment switching", () => {
       secretAccessKey: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
       awsRegion: "ap-south-1",
     });
-    expect(await getActiveEnvironment(userId)).toBe("staging");
+    jar.set("ops_env", "staging");
+    expect(await getActiveEnvironment(userId)).toBe("production");
   });
 
-  it("follows the switcher, and ignores a tampered cookie", async () => {
+  it("creates keys in production even if a form claims staging", async () => {
     const form = new FormData();
+    form.set("name", "sneaky");
     form.set("environment", "staging");
-    await switchEnvironment(form);
-    expect(await getActiveEnvironment(userId)).toBe("staging");
+    expect((await createKey({}, form)).secret).toMatch(/^sk_live_/);
+    expect(await listApiKeys(userId)).toMatchObject([{ name: "sneaky", environment: "production" }]);
+  });
 
-    jar.set("ops_env", "admin");
-    expect(await getActiveEnvironment(userId)).toBe("production");
-
-    const bad = new FormData();
-    bad.set("environment", "admin");
-    await switchEnvironment(bad);
-    expect(jar.get("ops_env")).toBe("admin"); // unchanged: the action refused it
+  it("creates a one-click setup key", async () => {
+    const result = await createQuickKey({});
+    expect(result.secret).toMatch(/^sk_live_/);
+    const keys = await listApiKeys(userId);
+    expect(keys).toMatchObject([{ name: "Default", environment: "production" }]);
   });
 });
+
 
 describe("dashboard test send", () => {
   function form(to = "success@simulator.amazonses.com") {
@@ -499,13 +501,12 @@ describe("dashboard test send", () => {
     return f;
   }
 
-  it("goes through the real pipeline: a log in the active environment and a queued job", async () => {
-    jar.set("ops_env", "staging");
+  it("goes through the real pipeline: a production log and a queued job", async () => {
     const result = await sendTestEmail({}, form());
 
-    expect(result.sent?.environment).toBe("staging");
+    expect(result.sent?.environment).toBe("production");
     const [row] = await getDb().select().from(emailLogs).where(eq(emailLogs.id, result.sent!.logId));
-    expect(row).toMatchObject({ environment: "staging", status: "queued", tags: { source: "dashboard-test" } });
+    expect(row).toMatchObject({ environment: "production", status: "queued", tags: { source: "dashboard-test" } });
     expect(await getSendQueue().getJob(`log-${result.sent!.logId}`)).toBeDefined();
   });
 

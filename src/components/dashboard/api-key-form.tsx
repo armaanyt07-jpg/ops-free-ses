@@ -18,11 +18,7 @@ function Submit() {
   );
 }
 
-export function ApiKeyForm({
-  defaultEnvironment = "staging",
-}: {
-  defaultEnvironment?: "staging" | "production";
-}) {
+export function ApiKeyForm() {
   const [state, formAction] = useActionState<ApiKeyFormState, FormData>(
     createKey,
     {},
@@ -34,19 +30,6 @@ export function ApiKeyForm({
         <div className="min-w-48 flex-1 space-y-2">
           <Label htmlFor="name">Key name</Label>
           <Input id="name" name="name" placeholder="backend-api" required />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="key-environment">Environment</Label>
-          <select
-            id="key-environment"
-            name="environment"
-            defaultValue={defaultEnvironment}
-            className="border-input bg-background focus-visible:ring-ring flex h-9 rounded-md border px-3 py-1 text-sm focus-visible:ring-2 focus-visible:outline-none"
-          >
-            <option value="staging">Staging</option>
-            <option value="production">Production</option>
-          </select>
         </div>
 
         <Submit />

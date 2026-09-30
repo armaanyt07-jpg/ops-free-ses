@@ -23,11 +23,7 @@ function Submit() {
  * and never rendered back. Stored credentials are displayed elsewhere by
  * access key ID and region only.
  */
-export function CredentialForm({
-  defaultEnvironment = "staging",
-}: {
-  defaultEnvironment?: "staging" | "production";
-}) {
+export function CredentialForm() {
   const [state, formAction] = useActionState<CredentialFormState, FormData>(
     saveCredential,
     {},
@@ -36,18 +32,6 @@ export function CredentialForm({
   return (
     <form action={formAction} className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-2">
-          <Label htmlFor="environment">Environment</Label>
-          <select
-            id="environment"
-            name="environment"
-            defaultValue={defaultEnvironment}
-            className="border-input bg-background ring-offset-background focus-visible:ring-ring flex h-9 w-full rounded-md border px-3 py-1 text-sm focus-visible:ring-2 focus-visible:outline-none"
-          >
-            <option value="staging">Staging</option>
-            <option value="production">Production</option>
-          </select>
-        </div>
 
         <div className="space-y-2">
           <Label htmlFor="awsRegion">AWS region</Label>

@@ -146,6 +146,8 @@ export interface MetricsFact {
 
 export interface PlatformFacts {
   domains: DomainFact[];
+  /** Phase 8: verified sender addresses, for accounts without a domain. */
+  verifiedAddresses?: number;
   /**
    * Offered only when an SNS topic is confirmed, i.e. automatic suppression is
    * actually running. Claiming it otherwise would be false.
@@ -342,7 +344,11 @@ export function adviceFor(draft: Draft, facts: PlatformFacts): string[] {
     advice.push("Marketing mail needs a working unsubscribe mechanism; describe yours.");
   }
   if (facts.domains.filter((f) => f.sesVerified).length === 0) {
-    advice.push("No sending domain is verified in SES yet. AWS reviewers look for an authenticated domain — verify one on the Domains page first.");
+    advice.push(
+      (facts.verifiedAddresses ?? 0) > 0
+        ? "You send from a verified email address. AWS can approve that, but a verified domain of your own usually makes the request stronger."
+        : "No sending domain or email address is verified in SES yet. Verify one on the Domains page first — AWS reviewers look for an authenticated sender.",
+    );
   }
   if (!facts.autoSuppressionActive) {
     advice.push(

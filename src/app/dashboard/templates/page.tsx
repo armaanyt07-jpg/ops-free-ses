@@ -47,7 +47,6 @@ export default async function TemplatesPage({
           <>
             Reusable emails with <code>{"{{variables}}"}</code>. Send one with{" "}
             <code>templateId</code> and <code>variables</code> on <code>POST /api/v1/send</code>.
-            Templates are shared by staging and production.
           </>
         }
         actions={

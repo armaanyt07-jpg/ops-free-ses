@@ -10,6 +10,8 @@ import {
   type VerifiedDomain,
 } from "@/db/schema";
 import { log } from "@/lib/api/logger";
+import { attachConfigurationSet } from "@/lib/aws/events";
+import { publishDkimRecords, type Route53Outcome } from "@/lib/aws/route53";
 import { DecryptionError } from "@/lib/crypto/encryption";
 import {
   analyzeDkim,
@@ -18,6 +20,7 @@ import {
   dkimRecordName,
   dmarcRecordName,
   expectedRecords,
+  hostingPlatform,
   normaliseDomain,
   RECOMMENDED_DMARC,
   RECOMMENDED_SPF,
@@ -41,6 +44,7 @@ import {
 import { classifySesError } from "@/lib/ses/errors";
 
 import { loadSesCredentials } from "./credentials";
+import { hasManagedEvents } from "./events-setup";
 
 /**
  * Domain & DNS verification manager — SRS FR-2, §10.
@@ -91,6 +95,12 @@ export interface DomainView {
   createdAt: Date;
   records: DnsRecord[];
   check: DomainCheckResult | null;
+}
+
+/** What `onboardDomain` automated beyond creating the identity (Phase 8). */
+export interface OnboardResult extends DomainView {
+  /** Route 53 publishing of the DKIM records; "no_zone" means publish by hand. */
+  autoDns: Route53Outcome;
 }
 
 export class DomainError extends Error {
@@ -163,7 +173,14 @@ export interface OnboardInput {
   domain: string;
 }
 
-export async function onboardDomain(input: OnboardInput): Promise<DomainView> {
+export async function onboardDomain(input: OnboardInput): Promise<OnboardResult> {
+  const platform = hostingPlatform(input.domain);
+  if (platform) {
+    throw new DomainError(
+      `${input.domain.trim()} belongs to ${platform}, and only ${platform} can add DNS records to it, so SES can't verify it. Send from your email address instead, or use a domain you own (you can point it at your ${platform} site too).`,
+    );
+  }
+
   const domain = normaliseDomain(input.domain);
   if (!domain) {
     throw new DomainError(
@@ -203,6 +220,25 @@ export async function onboardDomain(input: OnboardInput): Promise<DomainView> {
 
   const { status } = statusFromSes(identity);
 
+  // Phase 8 automation, both best effort: a failure leaves the manual path.
+  const autoDns: Route53Outcome =
+    status === "verified"
+      ? { status: "no_zone" }
+      : await publishDkimRecords(credentials, domain, identity.dkimTokens);
+  if (await hasManagedEvents(input.userId, input.environment)) {
+    try {
+      await attachConfigurationSet(credentials, domain);
+    } catch (error) {
+      log.warn({
+        event: "domain.events_attach_failed",
+        requestId: "domain",
+        userId: input.userId,
+        environment: input.environment,
+        detail: awsErrorName(error),
+      });
+    }
+  }
+
   const [row] = await getDb()
     .insert(verifiedDomains)
     .values({
@@ -236,7 +272,7 @@ export async function onboardDomain(input: OnboardInput): Promise<DomainView> {
   const checked = await checkDomain(input.userId, row.id);
   if (checked?.status === "pending") await scheduleDomainPolling(row);
 
-  return checked ?? toView(row);
+  return { ...(checked ?? toView(row)), autoDns };
 }
 
 // ---------------------------------------------------------------------------

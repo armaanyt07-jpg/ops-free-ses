@@ -191,11 +191,10 @@ describe("actions", () => {
     return f;
   };
 
-  it("saves to the active environment and reports what is missing", async () => {
-    jar.set("ops_env", "staging");
+  it("saves to production and reports what is missing", async () => {
     const result = await saveSandboxDraft({}, form({ draft: JSON.stringify({ companyName: "Q" }) }));
     expect(result.missing).toContain("Website URL (https://…)");
-    expect(await sandbox.getSandboxRequest(userId, "staging")).not.toBeNull();
+    expect(await sandbox.getSandboxRequest(userId, "production")).not.toBeNull();
   });
 
   it("rejects malformed drafts", async () => {

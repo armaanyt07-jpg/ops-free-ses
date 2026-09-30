@@ -1,37 +1,13 @@
 import Link from "next/link";
 
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { AMBER, GREEN } from "@/components/dashboard/badge-tones";
-import type { Environment } from "@/db/schema";
 import { formatDateTime, formatRelative } from "@/lib/dashboard/format";
 import { hrefWith, type SearchParams } from "@/lib/dashboard/params";
-import { cn } from "@/lib/utils";
 
 /**
  * Small server components shared by every dashboard page, so headings, times,
  * stat tiles and pagination look and behave the same everywhere.
  */
-
-/**
- * The single, unambiguous environment indicator. Every place that shows the
- * active environment (nav, page headers) should use this rather than its own
- * ad-hoc badge, so "which environment am I looking at" never has two answers.
- */
-export function EnvironmentBadge({ environment }: { environment: Environment }) {
-  return (
-    <Badge
-      data-testid="environment-badge"
-      variant="secondary"
-      className={cn(
-        "font-semibold tracking-wide uppercase",
-        environment === "production" ? GREEN : AMBER,
-      )}
-    >
-      {environment}
-    </Badge>
-  );
-}
 
 export function PageHeader({
   title,

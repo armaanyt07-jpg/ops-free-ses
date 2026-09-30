@@ -64,12 +64,7 @@ export default async function ActivityPage({
     <div className="space-y-6">
       <PageHeader
         title="Activity"
-        description={
-          <>
-            Every message accepted in <strong className="text-foreground">{environment}</strong>,
-            newest first. Open one for its timeline, per-recipient outcome and errors.
-          </>
-        }
+        description="Every message you've sent, newest first. Open one for its timeline, per-recipient outcome and errors."
       />
 
       <Card className="py-4">
@@ -166,7 +161,7 @@ export default async function ActivityPage({
       </Card>
 
       {result.rows.length === 0 ? (
-        <EmptyState title={filtered ? "No messages match these filters" : `No messages in ${environment} yet`}>
+        <EmptyState title={filtered ? "No messages match these filters" : "No messages yet"}>
           {filtered ? (
             <Link href={PATH} className="underline underline-offset-4">
               Reset filters

@@ -2,20 +2,7 @@ import Link from "next/link";
 
 import { SectionKicker } from "@/components/landing/section-kicker";
 import { Button } from "@/components/ui/button";
-
-const IAM_POLICY = `{
-  "Version": "2012-10-17",
-  "Statement": [{
-    "Effect": "Allow",
-    "Action": [
-      "ses:GetAccount",
-      "ses:SendEmail",
-      "ses:CreateEmailIdentity",
-      "ses:GetEmailIdentity"
-    ],
-    "Resource": "*"
-  }]
-}`;
+import { IAM_POLICY } from "@/lib/aws/iam-policy";
 
 interface Step {
   title: string;
@@ -34,43 +21,31 @@ const STEPS: Step[] = [
     body: (
       <>
         In the AWS console, create an IAM user with the policy below and an
-        access key for it. Paste the access key ID, secret and the SES region
-        into <span className="text-foreground font-medium">AWS</span> in the
-        dashboard. It is validated against AWS and stored encrypted.
+        access key for it, then paste the key into the setup screen. It is
+        validated against AWS and stored encrypted.
       </>
     ),
     code: IAM_POLICY,
   },
   {
-    title: "Verify your sending domain",
+    title: "Verify your domain or email address",
     body: (
       <>
-        Add your domain under{" "}
-        <span className="text-foreground font-medium">Domains</span>. Ops-Free
-        creates the identity in your SES account and lists three DKIM CNAME
-        records. Publish them at your DNS provider; SES usually verifies within
-        minutes, sometimes up to 72 hours.
+        Type your domain. Ops-Free creates it in your SES account and shows
+        three DNS records to add, with copy buttons. If your DNS is in Route 53,
+        they&apos;re added for you. No domain yet? Verify your email address
+        instead: click the link Amazon sends you, and you can send.
       </>
     ),
   },
   {
-    title: "Create an API key",
+    title: "Create an API key and send",
     body: (
       <>
-        Under <span className="text-foreground font-medium">API keys</span>,
-        create a key. The secret is shown once, so store it in your app&apos;s
-        environment.
-      </>
-    ),
-  },
-  {
-    title: "Send your first email",
-    body: (
-      <>
-        Call <code className="font-mono text-xs">POST /api/v1/send</code> with
-        the key as a bearer token, or use{" "}
-        <span className="text-foreground font-medium">Send a test email</span>{" "}
-        on the dashboard. The request format is shown below.
+        One click creates your key and shows a ready-to-run request. Send a
+        test email from the dashboard, or call{" "}
+        <code className="font-mono text-xs">POST /api/v1/send</code> from your
+        app.
       </>
     ),
   },
@@ -79,10 +54,9 @@ const STEPS: Step[] = [
     optional: true,
     body: (
       <>
-        Connect an Amazon SNS topic under{" "}
-        <span className="text-foreground font-medium">Webhooks</span> so
-        deliveries, bounces and complaints show up in the dashboard and bounced
-        addresses are suppressed automatically.
+        One click sets up Amazon SNS in your account, so every email&apos;s
+        outcome shows up in the dashboard and bounced addresses are suppressed
+        automatically.
       </>
     ),
   },
@@ -112,8 +86,8 @@ export function GetStarted() {
               From sign-up to first email.
             </h2>
             <p className="text-muted-foreground mt-4 text-sm leading-relaxed">
-              Five steps to send, two more before you go to production. You
-              need an AWS account and a domain you can add DNS records to.
+              Four steps to send, two more before you go to production. You
+              need an AWS account, and a domain or just an email address.
             </p>
             <Button asChild className="mt-8">
               <Link href="/signup">Create an account</Link>

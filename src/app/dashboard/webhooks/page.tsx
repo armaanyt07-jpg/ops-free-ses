@@ -1,5 +1,3 @@
-import { headers } from "next/headers";
-
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,27 +19,16 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { PageHeader, Time } from "@/components/dashboard/primitives";
+import { ConnectEventsButton } from "@/components/dashboard/setup-actions";
 import { TopicForm } from "@/components/dashboard/topic-form";
 import { listRecentEvents } from "@/server/sns-events";
+import { webhookEndpoint } from "@/server/public-url";
 import { listTopics } from "@/server/sns-topics";
 import { requireTenant } from "@/server/tenant";
 
 import { deleteTopic } from "./actions";
 
 export const dynamic = "force-dynamic";
-
-const WEBHOOK_PATH = "/api/v1/webhooks/aws-sns";
-
-/** The URL SNS should post to, as seen by the browser viewing this page. */
-async function endpointUrl(): Promise<{ url: string; local: boolean }> {
-  const h = await headers();
-  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
-  const proto =
-    h.get("x-forwarded-proto") ??
-    (host.startsWith("localhost") || host.startsWith("127.") ? "http" : "https");
-  const local = /^(localhost|127\.|0\.0\.0\.0|\[::1\])/.test(host);
-  return { url: `${proto}://${host}${WEBHOOK_PATH}`, local };
-}
 
 const TOPIC_STYLE: Record<string, { variant: "secondary" | "destructive"; className?: string }> = {
   confirmed: { variant: "secondary", className: GREEN },
@@ -54,7 +41,7 @@ export default async function WebhooksPage() {
   const [topics, events, endpoint] = await Promise.all([
     listTopics(tenant.id),
     listRecentEvents(tenant.id, 25),
-    endpointUrl(),
+    webhookEndpoint(),
   ]);
 
   return (
@@ -66,62 +53,89 @@ export default async function WebhooksPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Endpoint</CardTitle>
-          <CardDescription>Subscribe this URL to your SNS topic.</CardDescription>
+          <CardTitle>Connect automatically</CardTitle>
+          <CardDescription>
+            Creates an SNS topic and an SES configuration set in your AWS account, subscribes this
+            app to it, and applies it to your domains and addresses. Safe to run again, for example
+            after adding a domain.
+          </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <code className="bg-muted block rounded-md px-3 py-2 text-sm break-all select-all">
-            {endpoint.url}
-          </code>
-          {endpoint.local ? (
-            <Alert>
-              <AlertTitle>This is a local address</AlertTitle>
-              <AlertDescription>
-                SNS cannot reach localhost. Use the URL of a deployed instance,
-                or a tunnel, when subscribing.
-              </AlertDescription>
-            </Alert>
-          ) : null}
+        <CardContent>
+          <ConnectEventsButton local={endpoint.local} />
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Setup</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ol className="list-decimal space-y-2 pl-5 text-sm">
-            <li>
-              In the AWS account and region of your SES identity, create a{" "}
-              <strong>standard</strong> SNS topic (not FIFO).
-            </li>
-            <li>
-              Register its ARN below. <strong>Do this first</strong> — a
-              subscription request from an unregistered topic is refused.
-            </li>
-            <li>
-              In SNS, create an <strong>HTTPS</strong> subscription to the
-              endpoint above. Leave <em>raw message delivery</em> off: the
-              signature lives in the envelope it removes. The subscription is
-              confirmed automatically within seconds.
-            </li>
-            <li>
-              In SES, open each verified identity → <em>Notifications</em>, and
-              set the Bounce, Complaint and Delivery feedback topics to this
-              topic. (A configuration-set event destination publishing to the
-              same topic works too.)
-            </li>
-          </ol>
-        </CardContent>
-      </Card>
+      <details className="group space-y-6">
+        <summary className="text-muted-foreground hover:text-foreground cursor-pointer text-sm font-medium">
+          Set it up manually instead
+        </summary>
+        <div className="mt-6 space-y-8">
+          <Card>
+            <CardHeader>
+              <CardTitle>Endpoint</CardTitle>
+              <CardDescription>Subscribe this URL to your SNS topic.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <code className="bg-muted block rounded-md px-3 py-2 text-sm break-all select-all">
+                {endpoint.url}
+              </code>
+              {endpoint.local ? (
+                <Alert>
+                  <AlertTitle>This is a local address</AlertTitle>
+                  <AlertDescription>
+                    SNS cannot reach localhost. Use the URL of a deployed instance,
+                    or a tunnel, when subscribing.
+                  </AlertDescription>
+                </Alert>
+              ) : null}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Setup</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ol className="list-decimal space-y-2 pl-5 text-sm">
+                <li>
+                  In the AWS account and region of your SES identity, create a{" "}
+                  <strong>standard</strong> SNS topic (not FIFO).
+                </li>
+                <li>
+                  Register its ARN below. <strong>Do this first</strong> — a
+                  subscription request from an unregistered topic is refused.
+                </li>
+                <li>
+                  In SNS, create an <strong>HTTPS</strong> subscription to the
+                  endpoint above. Leave <em>raw message delivery</em> off: the
+                  signature lives in the envelope it removes. The subscription is
+                  confirmed automatically within seconds.
+                </li>
+                <li>
+                  In SES, open each verified identity → <em>Notifications</em>, and
+                  set the Bounce, Complaint and Delivery feedback topics to this
+                  topic. (A configuration-set event destination publishing to the
+                  same topic works too.)
+                </li>
+              </ol>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Register your topic</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <TopicForm />
+            </CardContent>
+          </Card>
+        </div>
+      </details>
 
       <Card>
         <CardHeader>
           <CardTitle>Registered topics</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          <TopicForm />
-
           {topics.length === 0 ? (
             <p className="text-muted-foreground text-sm">No topics registered.</p>
           ) : (
@@ -139,6 +153,11 @@ export default async function WebhooksPage() {
                   <TableRow key={topic.id}>
                     <TableCell className="font-mono text-xs break-all whitespace-normal">
                       {topic.topicArn}
+                      {topic.managed ? (
+                        <span className="text-muted-foreground mt-1 block font-sans">
+                          Set up automatically
+                        </span>
+                      ) : null}
                     </TableCell>
                     <TableCell>
                       <Badge

@@ -33,11 +33,11 @@ test("a real send through the dashboard reaches Activity", async ({ page }) => {
   await page.getByLabel("To").fill("success@simulator.amazonses.com");
   await page.getByLabel("Subject").fill(subject);
   await page.getByLabel("Message").fill("Sent by the automated E2E suite.");
-  await page.getByRole("button", { name: /^Send in/ }).click();
+  await page.getByRole("button", { name: "Send test email" }).click();
 
   // The confirmation text shares a container with the "Follow this message"
   // link, so this is a substring match rather than an anchored one.
-  await expect(page.getByText(/Queued in (staging|production)\./)).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText(/Queued\./)).toBeVisible({ timeout: 15_000 });
 
   await page.goto("/dashboard/activity");
   await expect(page.getByText(subject)).toBeVisible({ timeout: 15_000 });

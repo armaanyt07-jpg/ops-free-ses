@@ -18,11 +18,7 @@ function Submit() {
   );
 }
 
-export function DomainForm({
-  defaultEnvironment = "production",
-}: {
-  defaultEnvironment?: "staging" | "production";
-}) {
+export function DomainForm() {
   const [state, formAction] = useActionState<DomainFormState, FormData>(
     addDomain,
     {},
@@ -41,19 +37,6 @@ export function DomainForm({
             spellCheck={false}
             required
           />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="domain-environment">Environment</Label>
-          <select
-            id="domain-environment"
-            name="environment"
-            defaultValue={defaultEnvironment}
-            className="border-input bg-background ring-offset-background focus-visible:ring-ring flex h-9 w-full rounded-md border px-3 py-1 text-sm focus-visible:ring-2 focus-visible:outline-none"
-          >
-            <option value="production">Production</option>
-            <option value="staging">Staging</option>
-          </select>
         </div>
 
         <Submit />

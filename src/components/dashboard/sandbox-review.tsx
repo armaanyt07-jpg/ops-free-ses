@@ -1,8 +1,7 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
-import { Check, Copy } from "lucide-react";
 
 import { reviewSandboxRequest, type ReviewState } from "@/app/dashboard/sandbox/actions";
 import { Button } from "@/components/ui/button";
@@ -41,24 +40,5 @@ export function ReviewForm({ hash }: { hash: string }) {
       {state.error ? <p className="text-sm text-red-700">{state.error}</p> : null}
       <Confirm />
     </form>
-  );
-}
-
-export function CopyButton({ text, label }: { text: string; label: string }) {
-  const [copied, setCopied] = useState(false);
-  return (
-    <Button
-      type="button"
-      variant="outline"
-      size="sm"
-      onClick={async () => {
-        await navigator.clipboard.writeText(text);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 1500);
-      }}
-    >
-      {copied ? <Check className="size-4" aria-hidden /> : <Copy className="size-4" aria-hidden />}
-      {copied ? "Copied" : label}
-    </Button>
   );
 }

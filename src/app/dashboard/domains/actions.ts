@@ -5,7 +5,6 @@ import { z } from "zod";
 
 import { log } from "@/lib/api/logger";
 
-import { environmentEnum } from "@/db/schema";
 import {
   checkDomainIfStale,
   DomainError,
@@ -13,6 +12,13 @@ import {
   removeDomain,
   scheduleDomainPolling,
 } from "@/server/domains";
+import {
+  addEmailIdentity,
+  checkEmailIdentity,
+  EmailIdentityError,
+  removeEmailIdentity,
+} from "@/server/email-identities";
+import { DASHBOARD_ENVIRONMENT } from "@/server/environment";
 import { requireTenant } from "@/server/tenant";
 
 /**
@@ -23,7 +29,6 @@ import { requireTenant } from "@/server/tenant";
  */
 const addSchema = z.object({
   domain: z.string().trim().min(1, "Enter a domain").max(253),
-  environment: z.enum(environmentEnum.enumValues),
 });
 
 export interface DomainFormState {
@@ -39,23 +44,25 @@ export async function addDomain(
 
   const parsed = addSchema.safeParse({
     domain: formData.get("domain"),
-    environment: formData.get("environment"),
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Check the domain." };
   }
 
   try {
-    const view = await onboardDomain({ userId: tenant.id, ...parsed.data });
+    const view = await onboardDomain({ userId: tenant.id, environment: DASHBOARD_ENVIRONMENT, ...parsed.data });
     log.security("domain.added", tenant.id, `${view.domain} ${view.environment}`);
-    revalidatePath("/dashboard/domains");
+    revalidatePath("/dashboard", "layout");
 
-    return {
-      success:
-        view.status === "verified"
-          ? `${view.domain} is already verified in SES (${view.region}).`
-          : `${view.domain} was created in SES (${view.region}). Publish the DNS records below — verification is checked automatically.`,
-    };
+    let success: string;
+    if (view.status === "verified") {
+      success = `${view.domain} is already verified in SES (${view.region}).`;
+    } else if (view.autoDns.status === "published") {
+      success = `${view.domain} was created in SES (${view.region}) and its DKIM records were added to your Route 53 zone ${view.autoDns.zone}. Verification usually completes within minutes and is checked automatically.`;
+    } else {
+      success = `${view.domain} was created in SES (${view.region}). Add the DNS records below at your DNS provider — verification is checked automatically.`;
+    }
+    return { success };
   } catch (error) {
     if (error instanceof DomainError) return { error: error.message };
     return { error: "The domain could not be added." };
@@ -76,7 +83,7 @@ export async function checkDomainNow(formData: FormData): Promise<void> {
     await scheduleDomainPolling({ id: id.data, userId: tenant.id });
   }
 
-  revalidatePath("/dashboard/domains");
+  revalidatePath("/dashboard", "layout");
 }
 
 export async function deleteDomain(formData: FormData): Promise<void> {
@@ -85,5 +92,59 @@ export async function deleteDomain(formData: FormData): Promise<void> {
   if (!id.success) return;
 
   if (await removeDomain(tenant.id, id.data)) log.security("domain.removed", tenant.id, id.data);
-  revalidatePath("/dashboard/domains");
+  revalidatePath("/dashboard", "layout");
+}
+
+// ---------------------------------------------------------------------------
+// Email-address identities (Phase 8)
+// ---------------------------------------------------------------------------
+
+const addEmailSchema = z.object({
+  email: z.string().trim().min(1, "Enter an email address").max(320),
+});
+
+export async function addEmailIdentityAction(
+  _prev: DomainFormState,
+  formData: FormData,
+): Promise<DomainFormState> {
+  const tenant = await requireTenant();
+
+  const parsed = addEmailSchema.safeParse({
+    email: formData.get("email"),
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Check the address." };
+  }
+  try {
+    const row = await addEmailIdentity({ userId: tenant.id, environment: DASHBOARD_ENVIRONMENT, ...parsed.data });
+    log.security("email_identity.added", tenant.id, `${row.email} ${row.environment}`);
+    revalidatePath("/dashboard", "layout");
+    return {
+      success:
+        row.status === "verified"
+          ? `${row.email} is already verified in SES.`
+          : `Amazon sent a confirmation email to ${row.email}. Click the link in it (check spam too), then come back here.`,
+    };
+  } catch (error) {
+    if (error instanceof EmailIdentityError) return { error: error.message };
+    return { error: "The address could not be added." };
+  }
+}
+
+export async function checkEmailIdentityNow(formData: FormData): Promise<void> {
+  const tenant = await requireTenant();
+  const id = idSchema.safeParse(formData.get("id"));
+  if (!id.success) return;
+  await checkEmailIdentity(tenant.id, id.data);
+  revalidatePath("/dashboard", "layout");
+}
+
+export async function deleteEmailIdentity(formData: FormData): Promise<void> {
+  const tenant = await requireTenant();
+  const id = idSchema.safeParse(formData.get("id"));
+  if (!id.success) return;
+  if (await removeEmailIdentity(tenant.id, id.data)) {
+    log.security("email_identity.removed", tenant.id, id.data);
+  }
+  revalidatePath("/dashboard", "layout");
 }

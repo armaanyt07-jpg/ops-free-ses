@@ -144,7 +144,7 @@ export function DashboardPreview() {
                     <CardTitle className="text-sm font-medium">API keys</CardTitle>
                   </CardHeader>
                   <CardContent className="text-muted-foreground px-3.5 text-sm">
-                    2 active · production &amp; staging
+                    2 active
                   </CardContent>
                 </Card>
                 <Card size="sm" className="gap-1.5 py-3.5">

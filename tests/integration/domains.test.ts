@@ -2,7 +2,7 @@ import { Queue, QueueEvents, Worker } from "bullmq";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { verifiedDomains } from "@/db/schema";
+import { snsTopics, verifiedDomains } from "@/db/schema";
 import type { DnsAnswer } from "@/lib/dns/resolver";
 import type { DomainJobData } from "@/lib/queue/domain-queue";
 
@@ -25,6 +25,14 @@ const ses = vi.hoisted(() => ({
   createSesClient: vi.fn(),
 }));
 vi.mock("@/lib/ses/client", () => ses);
+
+// Phase 8 automation, mocked at the AWS boundary like SES.
+const route53 = vi.hoisted(() => ({
+  publishDkimRecords: vi.fn(async () => ({ status: "no_zone" }) as const),
+}));
+vi.mock("@/lib/aws/route53", () => route53);
+const events = vi.hoisted(() => ({ attachConfigurationSet: vi.fn(async () => undefined) }));
+vi.mock("@/lib/aws/events", () => events);
 
 const zone = vi.hoisted(() => ({
   txt: new Map<string, string[]>(),
@@ -211,6 +219,63 @@ describe("onboarding", () => {
       domains.onboardDomain({ userId, environment: "production", domain: "example.com" }),
     ).rejects.toThrow(/SES would not create the identity: AWS rejected the stored credential/);
     expect(await domains.listDomains(userId)).toHaveLength(0);
+  });
+
+  it("publishes the DKIM records to Route 53 when it can (Phase 8)", async () => {
+    route53.publishDkimRecords.mockResolvedValueOnce({ status: "published", zone: "example.com" } as never);
+
+    const view = await domains.onboardDomain({ userId, environment: "production", domain: "example.com" });
+
+    expect(route53.publishDkimRecords).toHaveBeenCalledWith(
+      expect.objectContaining({ region: "us-east-1" }),
+      "example.com",
+      ["tokaaa", "tokbbb", "tokccc"],
+    );
+    expect(view.autoDns).toEqual({ status: "published", zone: "example.com" });
+  });
+
+  it("falls back to manual DNS when Route 53 can't be used", async () => {
+    route53.publishDkimRecords.mockResolvedValueOnce({ status: "denied" } as never);
+    const view = await domains.onboardDomain({ userId, environment: "production", domain: "example.com" });
+    expect(view.autoDns.status).toBe("denied");
+    expect(view.status).toBe("pending");
+    expect(view.records).toHaveLength(5);
+  });
+
+  it("does not touch DNS for an identity SES already verified", async () => {
+    ses.createDomainIdentity.mockRejectedValue(awsError("AlreadyExistsException"));
+    ses.getDomainIdentity.mockResolvedValue(identity("SUCCESS"));
+    await domains.onboardDomain({ userId, environment: "production", domain: "example.com" });
+    expect(route53.publishDkimRecords).not.toHaveBeenCalled();
+  });
+
+  it("applies the events configuration set only once events are connected", async () => {
+    await domains.onboardDomain({ userId, environment: "production", domain: "example.com" });
+    expect(events.attachConfigurationSet).not.toHaveBeenCalled();
+
+    await getDb().insert(snsTopics).values({
+      userId,
+      topicArn: "arn:aws:sns:us-east-1:123456789012:ops-free-ses-events",
+      managed: true,
+      environment: "production",
+    });
+    await domains.onboardDomain({ userId, environment: "production", domain: "second.example.com" });
+    expect(events.attachConfigurationSet).toHaveBeenCalledWith(
+      expect.objectContaining({ region: "us-east-1" }),
+      "second.example.com",
+    );
+  });
+
+  it("still adds the domain when applying the configuration set fails", async () => {
+    await getDb().insert(snsTopics).values({
+      userId,
+      topicArn: "arn:aws:sns:us-east-1:123456789012:ops-free-ses-events",
+      managed: true,
+      environment: "production",
+    });
+    events.attachConfigurationSet.mockRejectedValueOnce(awsError("AccessDeniedException"));
+    const view = await domains.onboardDomain({ userId, environment: "production", domain: "example.com" });
+    expect(view.domain).toBe("example.com");
   });
 
   it("keeps staging and production separate", async () => {

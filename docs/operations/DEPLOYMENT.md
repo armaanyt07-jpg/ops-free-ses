@@ -24,6 +24,7 @@ password.
 | `ENCRYPTION_KEY_PREVIOUS` | during rotation | during rotation | see BACKUP-RECOVERY |
 | `WORKER_CONCURRENCY` | — | optional (5) | the SES rate is enforced separately |
 | `RATE_LIMIT_*` | optional | — | defaults in `.env.example` |
+| `PUBLIC_APP_URL` | optional | — | Phase 8: base URL "Connect events" subscribes to SNS; defaults to the request host |
 
 ## First deployment
 
@@ -63,6 +64,19 @@ password.
 - **Every release:** `npm test`, `npm run typecheck`, `npm run
   typecheck:worker`, lint, `npm run preflight`. Before large releases:
   `npm run test:resilience`.
+
+## After the first deployment (Phase 8)
+
+"Connect events" and the one-click AWS connection could not be exercised
+against real AWS from a laptop (SNS cannot reach localhost). Once deployed:
+
+1. Replace the `TESTSES` IAM user's policy with the one on the AWS page
+   (`src/lib/aws/iam-policy.ts`) — it adds the SNS, configuration-set and
+   Route 53 actions.
+2. Press **Connect events** and confirm: the topic shows **confirmed** on
+   Webhooks, and a test send to `bounce@simulator.amazonses.com` appears as
+   bounced in Activity.
+3. Then build the CloudFormation IAM-role connect (approved, deferred).
 
 ## Not yet done
 

@@ -273,9 +273,15 @@ describe("advice (never edits the answers)", () => {
     expect(output(draft)).toContain("Purchased, rented or third-party lists");
   });
 
+  it("accepts a verified email address, with a nudge towards a domain (Phase 8)", () => {
+    const advice = adviceFor(COMPLETE, { ...NO_FACTS, verifiedAddresses: 1 }).join(" ");
+    expect(advice).toMatch(/verified email address\. AWS can approve that/);
+    expect(advice).not.toMatch(/No sending domain/);
+  });
+
   it("flags missing domain, missing SNS, and an outsized quota", () => {
     const advice = adviceFor({ ...COMPLETE, requestedDailyQuota: 50_000 }, NO_FACTS).join(" ");
-    expect(advice).toMatch(/No sending domain is verified/);
+    expect(advice).toMatch(/No sending domain or email address is verified/);
     expect(advice).toMatch(/SNS is not connected/);
     expect(advice).toMatch(/over ten times/);
   });

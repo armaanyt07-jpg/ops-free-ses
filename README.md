@@ -72,7 +72,7 @@ src/
     dashboard/          Overview, Activity (+ message detail), Errors,
                         Templates (editor, versions, test send), Domains,
                         Production access (sandbox-exit assistant), Suppressions, Webhooks, API keys, AWS,
-                        Queue & health — environment switcher in the sidebar
+                        Queue & health (one environment; the first visit is a setup guide)
     login/ signup/      Supabase Auth
   db/                   Drizzle schema (SRS §6) and client
   lib/

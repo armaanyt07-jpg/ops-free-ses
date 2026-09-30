@@ -58,12 +58,7 @@ export default async function ErrorsPage({
     <div className="space-y-8">
       <PageHeader
         title="Errors"
-        description={
-          <>
-            What went wrong in <strong className="text-foreground">{environment}</strong>, grouped by
-            cause, with what to do about each.
-          </>
-        }
+        description="What went wrong, grouped by cause, with what to do about each."
         actions={
           <SegmentedLinks
             path="/dashboard/errors"
@@ -115,7 +110,7 @@ export default async function ErrorsPage({
         </CardHeader>
         <CardContent>
           {groups.length === 0 ? (
-            <EmptyState title={`No failures in ${environment} in this window`} />
+            <EmptyState title={"No failures in this window"} />
           ) : (
             <ul className="divide-y">
               {groups.map((g) => {

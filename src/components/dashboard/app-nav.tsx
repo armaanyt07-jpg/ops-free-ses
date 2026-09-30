@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Activity,
   AlertTriangle,
@@ -19,19 +19,15 @@ import {
   X,
 } from "lucide-react";
 
-import { switchEnvironment } from "@/app/dashboard/actions";
 import { Wordmark } from "@/components/brand/wordmark";
-import { EnvironmentBadge } from "@/components/dashboard/primitives";
-import type { Environment } from "@/db/schema";
 
 /**
- * Dashboard navigation — Phase 4 "responsive layouts" and "environment
- * switching".
+ * Dashboard navigation — Phase 4 "responsive layouts". (The environment
+ * switcher was removed in Phase 8: the dashboard has one environment.)
  *
  * ≥1024px: a fixed sidebar. Below that: a top bar whose menu opens a panel, so
  * nothing scrolls sideways on a phone. The active page is marked with
- * `aria-current`, and the environment is always visible — staging is tinted so
- * nobody mistakes it for production.
+ * `aria-current`.
  */
 const GROUPS = [
   {
@@ -67,46 +63,6 @@ const GROUPS = [
 
 function isActive(pathname: string, href: string, exact?: boolean) {
   return exact ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
-}
-
-function EnvironmentSwitcher({ environment }: { environment: Environment }) {
-  const formRef = useRef<HTMLFormElement>(null);
-  return (
-    <form ref={formRef} action={switchEnvironment} className="space-y-1">
-      <label htmlFor="env-switcher" className="text-muted-foreground block text-xs font-medium">
-        Environment
-      </label>
-      <div className="relative">
-        <span
-          aria-hidden
-          className={`absolute top-1/2 left-3 size-2 -translate-y-1/2 rounded-full ${
-            environment === "production" ? "bg-emerald-600" : "bg-amber-500"
-          }`}
-        />
-        <select
-          // Remounts whenever the server-resolved environment changes, so
-          // this stays correct even when it wasn't this exact <select> that
-          // triggered the change (e.g. the mobile switcher, or a stale
-          // client-side render) — `defaultValue` alone only applies once, at
-          // first mount, and silently ignores later prop updates.
-          key={environment}
-          id="env-switcher"
-          name="environment"
-          defaultValue={environment}
-          onChange={() => formRef.current?.requestSubmit()}
-          className="border-input bg-background focus-visible:ring-ring h-9 w-full rounded-md border pr-3 pl-7 text-sm font-medium focus-visible:ring-2 focus-visible:outline-none"
-        >
-          <option value="production">Production</option>
-          <option value="staging">Staging</option>
-        </select>
-      </div>
-      <noscript>
-        <button type="submit" className="text-xs underline">
-          Switch
-        </button>
-      </noscript>
-    </form>
-  );
 }
 
 function NavLinks({ pathname, onNavigate }: { pathname: string; onNavigate?: () => void }) {
@@ -163,7 +119,7 @@ function SignOut({ email }: { email: string }) {
   );
 }
 
-export function AppNav({ email, environment }: { email: string; environment: Environment }) {
+export function AppNav({ email }: { email: string }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
@@ -187,7 +143,6 @@ export function AppNav({ email, environment }: { email: string; environment: Env
       {/* Desktop sidebar */}
       <aside className="bg-muted/30 sticky top-0 hidden h-screen flex-col gap-6 overflow-y-auto border-r px-4 py-5 lg:flex">
         {brand}
-        <EnvironmentSwitcher environment={environment} />
         <div className="flex-1">
           <NavLinks pathname={pathname} />
         </div>
@@ -198,23 +153,19 @@ export function AppNav({ email, environment }: { email: string; environment: Env
       <header className="bg-background/95 sticky top-0 z-30 border-b backdrop-blur lg:hidden">
         <div className="flex h-14 items-center gap-3 px-4">
           {brand}
-          <span className="ml-auto">
-            <EnvironmentBadge environment={environment} />
-          </span>
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}
             aria-expanded={open}
             aria-controls="mobile-nav"
             aria-label={open ? "Close menu" : "Open menu"}
-            className="hover:bg-muted grid size-9 place-items-center rounded-md"
+            className="hover:bg-muted ml-auto grid size-9 place-items-center rounded-md"
           >
             {open ? <X className="size-5" /> : <Menu className="size-5" />}
           </button>
         </div>
         {open ? (
           <div id="mobile-nav" className="max-h-[calc(100dvh-3.5rem)] space-y-5 overflow-y-auto border-t px-4 py-4">
-            <EnvironmentSwitcher environment={environment} />
             <NavLinks pathname={pathname} onNavigate={() => setOpen(false)} />
             <SignOut email={email} />
           </div>

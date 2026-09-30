@@ -1,35 +1,28 @@
 import { expect, test } from "@playwright/test";
 
-import { BASE_URL, hasValidAuthState } from "./constants";
+import { hasValidAuthState } from "./constants";
 
 test.skip(!hasValidAuthState(), "Requires a signed-in E2E account — see tests/e2e/README.md");
 
 test.describe("overview", () => {
-  test("the environment badge agrees with the sidebar selector", async ({ page }) => {
+  test("there is one environment: no switcher, no staging (Phase 8)", async ({ page }) => {
     await page.goto("/dashboard");
-    const selected = await page.locator("aside select#env-switcher").inputValue();
-    await expect(page.locator("main").getByTestId("environment-badge")).toHaveText(selected);
+    await expect(page.locator("#env-switcher")).toHaveCount(0);
+    await expect(page.getByText(/staging/i)).toHaveCount(0);
   });
 
-  test("incomplete setup steps navigate directly to their configuration page", async ({ page }) => {
+  test("shows either the setup guide or the dashboard, never both", async ({ page }) => {
     await page.goto("/dashboard");
-
-    const setupLinks = page.locator("a", { hasText: "Set up" });
-    const count = await setupLinks.count();
-    test.skip(count === 0, "This environment is already fully configured — nothing to check");
-
-    const href = await setupLinks.first().getAttribute("href");
-    expect(href, "setup row has no href").toBeTruthy();
-
-    await setupLinks.first().click();
-    await expect(page).toHaveURL(new URL(href!, BASE_URL).toString());
+    const guide = await page.getByText("Let's get you sending").isVisible();
+    const dashboard = await page.getByText("Volume by outcome").isVisible();
+    expect(guide !== dashboard, "exactly one of the two").toBe(true);
   });
 
   test("the recent-activity empty state offers a real action, and isn't shown alongside real data", async ({
     page,
   }) => {
     await page.goto("/dashboard");
-    const emptyState = page.getByText(/^Nothing sent in (staging|production) yet$/);
+    const emptyState = page.getByText(/^Nothing sent yet$/);
     const isEmpty = await emptyState.isVisible().catch(() => false);
 
     if (isEmpty) {

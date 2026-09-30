@@ -1,54 +1,21 @@
 import "server-only";
 
-import { and, eq } from "drizzle-orm";
-import { cookies } from "next/headers";
-
-import { getDb } from "@/db";
-import { awsCredentials, environmentEnum, type Environment } from "@/db/schema";
+import type { Environment } from "@/db/schema";
 
 /**
- * The dashboard's active environment — Phase 4 "environment switching".
+ * The dashboard's environment.
  *
- * A cookie holds the choice, which is only a view preference: it decides which
- * environment's data a page shows, never which data a user may see. Every query
- * is still scoped by the tenant from the verified session.
+ * Phase 8 product decision: there is one environment, production. Staging
+ * (SRS "Staging and Production environments") confused new users more than it
+ * helped, so the dashboard no longer offers it — no switcher, no pickers, no
+ * labels. The `environment` column stays in the schema and every new row is
+ * production, so nothing was migrated away and it could return one day.
  *
- * With no cookie, the default is the environment that actually has an active
- * credential (production first), so a new user who set up staging only does
- * not land on an empty production dashboard.
+ * Callers still ask for "the active environment" rather than hard-coding the
+ * value, so that decision lives in one place.
  */
-export const ENV_COOKIE = "ops_env";
+export const DASHBOARD_ENVIRONMENT: Environment = "production";
 
-export function isEnvironment(value: unknown): value is Environment {
-  return (
-    typeof value === "string" &&
-    (environmentEnum.enumValues as readonly string[]).includes(value)
-  );
-}
-
-export async function getActiveEnvironment(
-  userId: string,
-): Promise<Environment> {
-  const chosen = (await cookies()).get(ENV_COOKIE)?.value;
-  if (isEnvironment(chosen)) return chosen;
-
-  const rows = await getDb()
-    .select({ environment: awsCredentials.environment })
-    .from(awsCredentials)
-    .where(and(eq(awsCredentials.userId, userId), eq(awsCredentials.active, true)));
-
-  const configured = new Set(rows.map((r) => r.environment));
-  if (configured.has("production")) return "production";
-  if (configured.has("staging")) return "staging";
-  return "production";
-}
-
-export async function setActiveEnvironment(env: Environment): Promise<void> {
-  (await cookies()).set(ENV_COOKIE, env, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: 365 * 24 * 3600,
-  });
+export async function getActiveEnvironment(_userId: string): Promise<Environment> {
+  return DASHBOARD_ENVIRONMENT;
 }

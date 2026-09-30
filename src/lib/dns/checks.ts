@@ -362,3 +362,39 @@ export function normaliseDomain(input: string): string | null {
 
   return value;
 }
+
+/**
+ * Phase 8: free subdomains from hosting platforms. Their DNS belongs to the
+ * platform, so nobody can publish DKIM records under them and SES can never
+ * verify them. Recognised up front so the user gets a real explanation.
+ */
+const HOSTING_SUFFIXES: Array<[string, string]> = [
+  ["vercel.app", "Vercel"],
+  ["netlify.app", "Netlify"],
+  ["github.io", "GitHub Pages"],
+  ["pages.dev", "Cloudflare Pages"],
+  ["workers.dev", "Cloudflare Workers"],
+  ["herokuapp.com", "Heroku"],
+  ["onrender.com", "Render"],
+  ["fly.dev", "Fly.io"],
+  ["up.railway.app", "Railway"],
+  ["web.app", "Firebase"],
+  ["firebaseapp.com", "Firebase"],
+  ["azurewebsites.net", "Azure"],
+  ["replit.app", "Replit"],
+];
+
+/** The hosting platform whose free subdomain this is, or null. Accepts URLs. */
+export function hostingPlatform(input: string): string | null {
+  let host = input.trim().toLowerCase();
+  try {
+    if (host.includes("://")) host = new URL(host).hostname;
+  } catch {
+    return null;
+  }
+  host = host.replace(/\.$/, "");
+  for (const [suffix, name] of HOSTING_SUFFIXES) {
+    if (host === suffix || host.endsWith(`.${suffix}`)) return name;
+  }
+  return null;
+}

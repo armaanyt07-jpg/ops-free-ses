@@ -117,7 +117,6 @@ export default async function MessagePage({ params }: { params: Promise<{ id: st
         description={
           <span className="flex flex-wrap items-center gap-2">
             <StatusBadge status={log.status} />
-            <Badge variant="outline">{log.environment}</Badge>
             <span>
               from {log.fromAddress} · <Time date={log.queuedAt} />
             </span>

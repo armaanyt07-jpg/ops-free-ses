@@ -142,6 +142,32 @@ export const verifiedDomains = pgTable(
   ],
 );
 
+/**
+ * Phase 8: a single verified sender address, for users without a domain.
+ * SES emails the address a confirmation link; clicking it verifies the
+ * identity. Kept apart from `verified_domains`, which is all about DNS.
+ */
+export const emailIdentities = pgTable(
+  "email_identities",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    email: varchar("email", { length: 320 }).notNull(),
+    environment: environmentEnum("environment").notNull(),
+    status: domainStatusEnum("status").default("pending").notNull(),
+    awsRegion: varchar("aws_region", { length: 32 }).notNull(),
+    lastCheckedAt: timestamp("last_checked_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => [
+    uniqueIndex("email_identities_user_email_env").on(t.userId, t.email, t.environment),
+  ],
+);
+
 export const emailTemplates = pgTable(
   "email_templates",
   {
@@ -338,6 +364,13 @@ export const snsTopics = pgTable(
     subscriptionArn: varchar("subscription_arn", { length: 512 }),
     confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
     lastMessageAt: timestamp("last_message_at", { withTimezone: true }),
+    /**
+     * Phase 8: true when "Connect events" created this topic in the
+     * customer's account; `environment` is whose credential did it. Both
+     * are null/false for topics registered by hand.
+     */
+    managed: boolean("managed").default(false).notNull(),
+    environment: environmentEnum("environment"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -426,6 +459,7 @@ export type AwsCredential = typeof awsCredentials.$inferSelect;
 export type ApiKey = typeof apiKeys.$inferSelect;
 export type EmailLog = typeof emailLogs.$inferSelect;
 export type VerifiedDomain = typeof verifiedDomains.$inferSelect;
+export type EmailIdentity = typeof emailIdentities.$inferSelect;
 export type Suppression = typeof suppressionList.$inferSelect;
 export type SnsTopic = typeof snsTopics.$inferSelect;
 export type SnsEvent = typeof snsEvents.$inferSelect;

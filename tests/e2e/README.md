@@ -53,14 +53,12 @@ axe accessibility scan of the login page.
 | --- | --- |
 | `public.spec.ts` | Unauthenticated redirects, login/signup pages, a11y |
 | `navigation.spec.ts` | Every sidebar route loads, active-link state, phone-width overflow, mobile menu, a11y on Overview |
-| `environment-switcher.spec.ts` | Regression coverage for the sidebar/page environment-mismatch bug (`app-nav.tsx`) |
 | `overview.spec.ts` | Setup checklist links to the right page, empty-state action, dead-letter explanation and link |
 | `send-flow.spec.ts` | Real AWS credential save + real send reaching Activity (opt-in) |
 
 ## A note on the test account
 
-Use an account that isn't otherwise important to you — the switcher spec
-does flip its environment back and forth (restoring the original value at
-the end of each test), and the send-flow spec does queue real messages
+Use an account that isn't otherwise important to you — the send-flow spec
+queues real messages
 tagged with an `E2E test <timestamp>` subject you can tell apart from real
 activity.

@@ -63,31 +63,25 @@ export default async function ApiKeysPage({
     <div className="space-y-8">
       <PageHeader
         title="API keys"
-        description={
-          <>
-            Keys are scoped to one environment — a staging key can never send through
-            production credentials. Showing <strong className="text-foreground">{environment}</strong>.
-          </>
-        }
+        description="Your app authenticates to the send API with one of these keys."
       />
 
       <Card>
         <CardHeader>
           <CardTitle>Create a key</CardTitle>
           <CardDescription>
-            Production keys start <code>sk_live_</code>, staging keys <code>sk_test_</code>. The
-            secret is shown once; only its hash is stored.
+            The secret is shown once; only its hash is stored.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <ApiKeyForm defaultEnvironment={environment} />
+          <ApiKeyForm />
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <CardTitle>{environment === "production" ? "Production" : "Staging"} keys</CardTitle>
+            <CardTitle>Your keys</CardTitle>
             {hiddenCount > 0 ? (
               <Link
                 href={showInactive ? "/dashboard/api-keys" : "/dashboard/api-keys?inactive=1"}
@@ -104,7 +98,7 @@ export default async function ApiKeysPage({
         </CardHeader>
         <CardContent>
           {shown.length === 0 ? (
-            <EmptyState title={`No ${environment} keys`}>Create one above to use the API.</EmptyState>
+            <EmptyState title="No keys yet">Create one above to use the API.</EmptyState>
           ) : (
             <Table>
               <TableHeader>

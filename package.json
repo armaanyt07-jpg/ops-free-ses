@@ -28,7 +28,9 @@
     "preflight": "tsx --tsconfig tsconfig.worker.json scripts/preflight.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-route-53": "^3.1143.0",
     "@aws-sdk/client-sesv2": "^3.1141.0",
+    "@aws-sdk/client-sns": "^3.1143.0",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.117.2",
     "bullmq": "^6.3.9",

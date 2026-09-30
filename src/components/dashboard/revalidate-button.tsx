@@ -15,11 +15,10 @@ function Submit() {
   );
 }
 
-export function RevalidateButton({ environment }: { environment: string }) {
-  const [state, action] = useActionState<RevalidateState, FormData>(revalidate, {});
+export function RevalidateButton() {
+  const [state, action] = useActionState<RevalidateState>(revalidate, {});
   return (
     <form action={action} className="flex flex-col items-end gap-1">
-      <input type="hidden" name="environment" value={environment} />
       <Submit />
       {state.error ? <p className="max-w-80 text-right text-xs text-red-700">{state.error}</p> : null}
       {state.ok ? <p className="text-muted-foreground text-xs">Updated from AWS.</p> : null}

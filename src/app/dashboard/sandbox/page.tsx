@@ -7,7 +7,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Fields, PageHeader, Time } from "@/components/dashboard/primitives";
 import { RevalidateButton } from "@/components/dashboard/revalidate-button";
 import { SandboxQuestionnaire } from "@/components/dashboard/sandbox-questionnaire";
-import { CopyButton, ReviewForm } from "@/components/dashboard/sandbox-review";
+import { CopyButton } from "@/components/dashboard/copy-button";
+import { ReviewForm } from "@/components/dashboard/sandbox-review";
 import { formatDateTime } from "@/lib/dashboard/format";
 import { listCredentials } from "@/server/credentials";
 import { getActiveEnvironment } from "@/server/environment";
@@ -55,13 +56,7 @@ export default async function SandboxPage() {
     <div className="space-y-8">
       <PageHeader
         title="Production access"
-        description={
-          <>
-            Prepare the request that takes your SES account out of the sandbox, for{" "}
-            <strong className="text-foreground">{environment}</strong>. You answer; the assistant
-            only arranges your answers. You review, then submit it in AWS yourself.
-          </>
-        }
+        description="Prepare the request that takes your SES account out of the sandbox. You answer; the assistant only arranges your answers. You review, then submit it in AWS yourself."
       />
 
       <Card>
@@ -80,15 +75,15 @@ export default async function SandboxPage() {
                 )}
               </CardDescription>
             </div>
-            {credential?.active ? <RevalidateButton environment={environment} /> : null}
+            {credential?.active ? <RevalidateButton /> : null}
           </div>
         </CardHeader>
         <CardContent>
           {!credential ? (
             <p className="text-sm">
-              No AWS credential for {environment}.{" "}
+              AWS isn&apos;t connected yet.{" "}
               <Link href="/dashboard/aws" className="underline underline-offset-4">
-                Add one
+                Connect it
               </Link>{" "}
               to see sandbox and review status.
             </p>

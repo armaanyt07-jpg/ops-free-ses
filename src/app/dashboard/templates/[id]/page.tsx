@@ -19,7 +19,6 @@ import { TemplateEditor } from "@/components/dashboard/template-editor";
 import { TemplateTestForm } from "@/components/dashboard/template-test-form";
 import type { SearchParams } from "@/lib/dashboard/params";
 import { render, sampleValues } from "@/lib/templates/engine";
-import { getActiveEnvironment } from "@/server/environment";
 import { definitionsOf, getTemplate, listVersions } from "@/server/templates";
 import { requireTenant } from "@/server/tenant";
 
@@ -40,10 +39,7 @@ export default async function TemplatePage({
   const template = await getTemplate(tenant.id, id);
   if (!template) notFound();
 
-  const [versions, environment] = await Promise.all([
-    listVersions(tenant.id, template.id),
-    getActiveEnvironment(tenant.id),
-  ]);
+  const versions = await listVersions(tenant.id, template.id);
 
   const definitions = definitionsOf(template.variables);
   const samples = sampleValues(definitions);
@@ -171,14 +167,13 @@ export default async function TemplatePage({
         <Card>
           <CardHeader>
             <CardTitle>Send a test</CardTitle>
-            <CardDescription>Through the real pipeline, from the saved version, in {environment}.</CardDescription>
+            <CardDescription>Through the real pipeline, from the saved version.</CardDescription>
           </CardHeader>
           <CardContent>
             <TemplateTestForm
               templateId={template.id}
               version={template.version}
               samples={samples}
-              environment={environment}
               archived={!template.active}
             />
           </CardContent>
@@ -243,7 +238,7 @@ export default async function TemplatePage({
         <CardContent>
           <pre className="bg-muted overflow-x-auto rounded-md p-3 text-xs">
             {`curl -X POST $OPS_URL/api/v1/send \\
-  -H "Authorization: Bearer ${environment === "production" ? "sk_live_…" : "sk_test_…"}" \\
+  -H "Authorization: Bearer sk_live_…" \\
   -H "Content-Type: application/json" \\
   -d '${apiExample}'`}
           </pre>

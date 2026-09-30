@@ -19,6 +19,7 @@ import {
 
 import { deliveryStats } from "./activity";
 import { listDomains } from "./domains";
+import { listEmailIdentities } from "./email-identities";
 import { listTopics } from "./sns-topics";
 
 /**
@@ -47,7 +48,7 @@ const FACT_WINDOW_DAYS = 30;
 export async function collectFacts(userId: string, environment: Environment): Promise<PlatformFacts> {
   const since = new Date(Date.now() - FACT_WINDOW_DAYS * 24 * 3600 * 1000);
 
-  const [domains, topics, events, stats] = await Promise.all([
+  const [domains, topics, events, stats, addresses] = await Promise.all([
     listDomains(userId),
     listTopics(userId),
     getDb()
@@ -62,6 +63,7 @@ export async function collectFacts(userId: string, environment: Environment): Pr
       )
       .limit(1),
     deliveryStats(userId, environment, 30),
+    listEmailIdentities(userId),
   ]);
 
   const autoSuppressionActive = topics.some((t) => t.status === "confirmed") && events.length > 0;
@@ -79,6 +81,7 @@ export async function collectFacts(userId: string, environment: Environment): Pr
         dmarcPolicy: d.check?.dmarc.policy ?? null,
         checkedAt: d.lastCheckedAt?.toISOString() ?? null,
       })),
+    verifiedAddresses: addresses.filter((a) => a.environment === environment && a.status === "verified").length,
     autoSuppressionActive,
     // Rates without outcome data would read 0% because nothing was measured.
     metrics:
