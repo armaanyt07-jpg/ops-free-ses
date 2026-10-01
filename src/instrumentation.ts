@@ -6,8 +6,19 @@
  * structured, fingerprinted channel as the API routes and the worker.
  */
 export async function register(): Promise<void> {
-  // Nothing to initialise: reporting is a structured log line (see
-  // src/lib/observability/errors.ts and docs/operations/OBSERVABILITY.md).
+  // Reporting is a structured log line (src/lib/observability/errors.ts);
+  // Sentry, when configured, receives the same errors through it. Only the
+  // Node runtime reports, as in `onRequestError` below.
+  if (process.env.NEXT_RUNTIME === "nodejs") {
+    const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
+    if (dsn) {
+      const Sentry = await import("@sentry/nextjs");
+      const { sentryOptions } = await import("@/lib/observability/sentry");
+      Sentry.init(
+        sentryOptions(dsn, process.env.VERCEL_ENV ?? process.env.NODE_ENV, process.env.VERCEL_GIT_COMMIT_SHA),
+      );
+    }
+  }
 }
 
 export async function onRequestError(

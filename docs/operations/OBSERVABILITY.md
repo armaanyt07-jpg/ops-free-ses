@@ -39,10 +39,35 @@ Unexpected errors from API routes (error boundary), pages and Server Actions
 - the worker exits on an uncaught exception, so its supervisor restarts it
   cleanly, and in-flight jobs are recovered.
 
-**Forwarding:** point the platform log drain (Vercel → Log Drains; the
-worker host's equivalent) at your tool (Datadog, Better Stack, Axiom, or
-Sentry via its log integration). No SDK is needed; everything is structured
-JSON. Choosing and wiring a destination is part of deployment.
+**Sentry (optional, on in production).** With a DSN set, every
+`error.unhandled` is also sent to Sentry from `reportError`, grouped by the
+same `fingerprint` and tagged with `source` and `route`. Browser errors in
+the dashboard go too (`src/instrumentation-client.ts`,
+`src/app/global-error.tsx`; the SDK loads lazily so it adds nothing to the
+initial page weight). Before anything leaves, `src/lib/observability/sentry.ts`:
+
+- redacts messages with the same rules as the log line, and drops the bound
+  values from database query errors (`params: [redacted]`);
+- drops request bodies, cookies and every header except `User-Agent`;
+- strips query strings from every URL (`/auth/confirm` carries a sign-in
+  token there);
+- sends no user, IP address or local variables.
+
+| Where | Variable | Notes |
+| --- | --- | --- |
+| Vercel | `NEXT_PUBLIC_SENTRY_DSN` | **plain** type, not Secret; inlined at build time, so a change needs a fresh build (push), not a redeploy |
+| Railway | `SENTRY_DSN` | the same DSN |
+
+With neither set, Sentry is off and nothing changes. Keep `@sentry/core`,
+`@sentry/nextjs` and `@sentry/node` pinned to the **same exact version**:
+`reportError` imports `@sentry/core` directly, and the SDKs only share their
+client within one version.
+
+Alerting: Sentry → Alerts → "a new issue is created" emails you on the first
+occurrence of every new fingerprint.
+
+**Log drains** remain an option for the full log stream (Vercel Pro → Drains;
+the worker host's equivalent) to Datadog, Better Stack or Axiom.
 
 ## Health endpoints
 

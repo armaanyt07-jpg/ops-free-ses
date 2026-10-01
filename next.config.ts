@@ -33,6 +33,9 @@ const nextConfig: NextConfig = {
    */
   async headers() {
     const production = process.env.NODE_ENV === "production";
+    // The browser SDK posts errors straight to Sentry's ingest host.
+    const sentryDsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
+    const sentryOrigin = sentryDsn ? ` ${new URL(sentryDsn).origin}` : "";
     const csp = [
       "default-src 'self'",
       `script-src 'self' 'unsafe-inline'${production ? "" : " 'unsafe-eval'"}`,
@@ -40,7 +43,7 @@ const nextConfig: NextConfig = {
       // Template previews render the customer's own HTML, which may load images.
       "img-src 'self' data: https:",
       "font-src 'self'",
-      "connect-src 'self'",
+      `connect-src 'self'${sentryOrigin}`,
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self'",

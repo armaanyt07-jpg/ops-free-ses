@@ -104,9 +104,15 @@ describe("secrets stay on the server", () => {
     }
   });
 
-  it("only the two Supabase public values are NEXT_PUBLIC_", () => {
+  it("only the reviewed public values are NEXT_PUBLIC_", () => {
+    // Each is public by design: the Supabase URL and anon key (RLS guards the
+    // data), and the Sentry DSN (it can submit events, never read them).
     const used = new Set(files.flatMap((f) => [...read(f).matchAll(/NEXT_PUBLIC_[A-Z_]+/g)].map((m) => m[0])));
-    expect([...used].sort()).toEqual(["NEXT_PUBLIC_SUPABASE_ANON_KEY", "NEXT_PUBLIC_SUPABASE_URL"]);
+    expect([...used].sort()).toEqual([
+      "NEXT_PUBLIC_SENTRY_DSN",
+      "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+      "NEXT_PUBLIC_SUPABASE_URL",
+    ]);
   });
 
   it("nothing renders raw HTML into the dashboard or evaluates code", () => {

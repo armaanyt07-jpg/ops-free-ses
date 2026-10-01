@@ -9,19 +9,26 @@
  *
  * `fingerprint` is a hash of the error's type and top stack frames — the same
  * bug always produces the same fingerprint, so a log tool can group, count
- * and alert on it without a separate error-tracking SDK. (Forwarding these
- * lines to Sentry, Datadog or similar is a log-drain configuration; see
- * docs/operations/OBSERVABILITY.md.)
+ * and alert on it. When Sentry is configured (src/lib/observability/sentry.ts)
+ * the error is also forwarded there, grouped by the same fingerprint; with no
+ * DSN that forwarding is a no-op. See docs/operations/OBSERVABILITY.md.
  *
  * Messages are redacted before they are logged: provider errors quote email
  * addresses ("Email address is not verified: …"), and SRS §9 forbids logging
  * unnecessary PII.
  */
+import { captureException, flush } from "@sentry/core";
+
 const EMAIL = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi;
 const SECRETISH = /\b(sk_(live|test)_[A-Za-z0-9_-]{8,}|AKIA[0-9A-Z]{16}|Bearer\s+\S+)/g;
 
+// Drizzle's query errors end with the bound values ("Failed query: …\nparams:
+// a,b"), which can be anything a customer stored. The SQL alone identifies
+// the failing query.
+const QUERY_PARAMS = /\nparams: [\s\S]*$/;
+
 export function redact(text: string): string {
-  return text.replace(EMAIL, "[email]").replace(SECRETISH, "[secret]");
+  return text.replace(QUERY_PARAMS, "\nparams: [redacted]").replace(EMAIL, "[email]").replace(SECRETISH, "[secret]");
 }
 
 function frames(error: Error): string[] {
@@ -72,5 +79,29 @@ export function reportError(error: unknown, context: ErrorContext): string {
       frames: frames(e),
     }),
   );
+  captureException(e, {
+    fingerprint: [fp],
+    tags: { source: context.source, ...(context.route ? { route: context.route } : {}) },
+    extra: { requestId: context.requestId, jobId: context.jobId },
+  });
+  keepAlive(flush(2_000));
   return fp;
+}
+
+/** Waits (bounded) for queued error reports to be delivered — before a process exits. */
+export function flushErrors(timeoutMs = 2_000): Promise<boolean> {
+  return flush(timeoutMs);
+}
+
+type RequestContext = { get?: () => { waitUntil?: (task: Promise<unknown>) => void } | undefined };
+
+/**
+ * On Vercel a function can be frozen as soon as its response is sent, which
+ * would strand the report in Sentry's queue. The platform's request context
+ * offers `waitUntil` to keep it alive until delivery. Elsewhere — the worker,
+ * tests — there is no such context and the flush simply runs.
+ */
+function keepAlive(task: Promise<unknown>): void {
+  const context = (globalThis as Record<symbol, RequestContext | undefined>)[Symbol.for("@vercel/request-context")];
+  context?.get?.()?.waitUntil?.(task);
 }

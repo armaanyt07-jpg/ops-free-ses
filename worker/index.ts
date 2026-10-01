@@ -2,11 +2,13 @@ import { randomUUID } from "node:crypto";
 
 import { config } from "dotenv";
 import { DelayedError, Worker } from "bullmq";
+import * as Sentry from "@sentry/node";
 
 config({ path: ".env.local" });
 
 import { log } from "@/lib/api/logger";
-import { reportError } from "@/lib/observability/errors";
+import { flushErrors, reportError } from "@/lib/observability/errors";
+import { sentryOptions } from "@/lib/observability/sentry";
 import { createRedis } from "@/lib/queue/connection";
 import {
   DOMAIN_QUEUE_NAME,
@@ -31,6 +33,21 @@ import { createSendProcessor } from "./processor";
  * SES, and the only place outside the dashboard that decrypts a customer
  * credential. Run it with `npm run worker`.
  */
+// Error monitoring: optional; errors reach Sentry through reportError.
+if (process.env.SENTRY_DSN) {
+  Sentry.init({
+    ...sentryOptions(
+      process.env.SENTRY_DSN,
+      process.env.RAILWAY_ENVIRONMENT_NAME ?? process.env.NODE_ENV ?? "development",
+      process.env.RAILWAY_GIT_COMMIT_SHA,
+    ),
+    // The process handlers below report through reportError (fingerprinted,
+    // redacted); Sentry's own would report every crash a second time.
+    integrations: (defaults) =>
+      defaults.filter((i) => i.name !== "OnUncaughtException" && i.name !== "OnUnhandledRejection"),
+  });
+}
+
 const WORKER_ID = process.env.WORKER_ID ?? `w-${randomUUID().slice(0, 8)}`;
 
 const CONCURRENCY = (() => {
@@ -145,6 +162,7 @@ async function shutdown(signal: string): Promise<void> {
       detail: error instanceof Error ? error.message : "unknown",
     });
   } finally {
+    await flushErrors();
     process.exit(0);
   }
 }
@@ -158,7 +176,8 @@ process.on("unhandledRejection", (reason) => {
 });
 process.on("uncaughtException", (error) => {
   reportError(error, { source: "process" });
-  process.exit(1);
+  // Bounded: the report gets two seconds to leave before the restart.
+  void flushErrors().finally(() => process.exit(1));
 });
 worker.on("failed", (job, error) => {
   // Expected failures (SES rejections, retries) are logged by the processor.

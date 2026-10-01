@@ -24,6 +24,8 @@ password.
 | `ENCRYPTION_KEY_PREVIOUS` | during rotation | during rotation | see BACKUP-RECOVERY |
 | `WORKER_CONCURRENCY` | — | optional (5) | the SES rate is enforced separately |
 | `RATE_LIMIT_*` | optional | — | defaults in `.env.example` |
+| `NEXT_PUBLIC_SENTRY_DSN` | optional | — | error monitoring; plain type, needs a fresh build — see OBSERVABILITY |
+| `SENTRY_DSN` | — | optional | the same DSN, for the worker |
 | `PUBLIC_APP_URL` | optional | — | Phase 8: base URL "Connect events" subscribes to SNS; defaults to the request host |
 
 ## First deployment
