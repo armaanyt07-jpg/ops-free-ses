@@ -75,6 +75,7 @@ the worker host's equivalent) to Datadog, Better Stack or Axiom.
 | --- | --- | --- |
 | `GET /api/health` | the process serves; no dependency checks | liveness probe |
 | `GET /api/health/ready` | Postgres and Redis answer within 2 s; 503 otherwise; cached 5 s; reveals only ok/latency | readiness / load-balancer check, uptime monitor |
+| `GET /api/health/worker` | at least one worker heartbeat is fresh (< 35 s); 503 `down` when none is, 503 `unknown` when Redis doesn't answer within 3 s; cached 5 s; reveals only a status and a count | uptime monitor for the worker |
 | `/dashboard/health` | queue depth, dead letter (tenant's own), worker heartbeats, webhook lag | operators |
 
 ## Alerts to configure
@@ -82,7 +83,7 @@ the worker host's equivalent) to Datadog, Better Stack or Axiom.
 | Alert | Condition | Runbook |
 | --- | --- | --- |
 | Readiness failing | `/api/health/ready` non-200 for 2 min | 6, 7 |
-| No worker | no `worker.*` lines for 5 min while sends are accepted | 3 |
+| No worker | `/api/health/worker` non-200 (UptimeRobot), or no `worker.*` lines for 5 min while sends are accepted | 3 |
 | Backlog | Waiting grows for 10 min | 3 |
 | Error spike | a new `error.unhandled` fingerprint, or more than 10/min | — |
 | Dead-lettering | `worker.dead_lettered` rate > 1% of sends | 1, 5 |

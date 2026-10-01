@@ -72,7 +72,9 @@ async function readWorkers(): Promise<WorkerStatus[]> {
         "MATCH",
         `${HEARTBEAT_PREFIX}*`,
         "COUNT",
-        100,
+        // The scan walks BullMQ's whole keyspace to find a few heartbeats, and
+        // each call is a billed command on Upstash: fewer, larger steps.
+        1000,
       );
       cursor = next;
       found.push(...keys);
@@ -99,6 +101,19 @@ async function readWorkers(): Promise<WorkerStatus[]> {
       .sort((a, b) => a.workerId.localeCompare(b.workerId));
   } finally {
     await redis.quit().catch(() => undefined);
+  }
+}
+
+/**
+ * Workers with a fresh heartbeat, for the public worker health probe. `null`
+ * when Redis is not configured or does not answer; the caller bounds the wait.
+ */
+export async function liveWorkerCount(): Promise<number | null> {
+  if (!isQueueConfigured()) return null;
+  try {
+    return (await readWorkers()).filter((w) => w.healthy).length;
+  } catch {
+    return null;
   }
 }
 

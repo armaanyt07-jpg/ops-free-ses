@@ -69,6 +69,7 @@ describe("API routes authenticate", () => {
     // Public by design (platform probes); reveal only ok/fail, no error text.
     "src/app/api/health/route.ts": /liveness/,
     "src/app/api/health/ready/route.ts": /readiness[\s\S]*never error text/,
+    "src/app/api/health/worker/route.ts": /worker heartbeats[\s\S]*never error text/,
   };
 
   const routes = files.filter((f) => f.endsWith("/route.ts")).map(rel).sort();
