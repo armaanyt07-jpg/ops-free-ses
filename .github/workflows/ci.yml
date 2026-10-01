@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Typecheck (app)
+        run: npm run typecheck
+
+      - name: Typecheck (worker)
+        run: npm run typecheck:worker
+
+      - name: Lint
+        run: npm run lint
+
+      # Self-contained: PGlite for PostgreSQL, SES mocked, a throwaway
+      # ENCRYPTION_KEY from tests/support/setup.ts. No secrets needed.
+      - name: Unit and integration tests
+        run: npm test
