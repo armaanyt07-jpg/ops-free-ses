@@ -1,3 +1,5 @@
+import { CheckCircle2 } from "lucide-react";
+
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -44,6 +46,8 @@ export default async function WebhooksPage() {
     webhookEndpoint(),
   ]);
 
+  const connected = topics.some((t) => t.status === "confirmed");
+
   return (
     <div className="space-y-8">
       <PageHeader
@@ -53,15 +57,24 @@ export default async function WebhooksPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Connect automatically</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            {connected ? (
+              <>
+                <CheckCircle2 className="size-4 text-emerald-700" aria-hidden />
+                Connected
+              </>
+            ) : (
+              "Connect automatically"
+            )}
+          </CardTitle>
           <CardDescription>
-            Creates an SNS topic and an SES configuration set in your AWS account, subscribes this
-            app to it, and applies it to your domains and addresses. Safe to run again, for example
-            after adding a domain.
+            {connected
+              ? "Deliveries, bounces and complaints show up in Activity. Added a new domain or address? Apply the connection to it below."
+              : "Creates an SNS topic and an SES configuration set in your AWS account, subscribes this app to it, and applies it to your domains and addresses. Safe to run again, for example after adding a domain."}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <ConnectEventsButton local={endpoint.local} />
+          <ConnectEventsButton local={endpoint.local} connected={connected} />
         </CardContent>
       </Card>
 

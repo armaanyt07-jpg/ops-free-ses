@@ -371,7 +371,7 @@ export default async function OverviewPage({
               </>
             )}
             <Link href="/dashboard/health" className="text-sm underline underline-offset-4">
-              Queue &amp; health →
+              Sending status →
             </Link>
           </CardContent>
         </Card>

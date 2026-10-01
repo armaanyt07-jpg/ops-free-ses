@@ -75,7 +75,7 @@ const pages: Array<[string, () => Promise<unknown>, string[]]> = [
   ["new template", async () => (await import("@/app/dashboard/templates/new/page")).default(), ["Create template", "Welcome to Acme, Alice"]],
   ["template editor", async () => (await import("@/app/dashboard/templates/[id]/page")).default({ params: Promise.resolve({ id: templateId }), searchParams: Promise.resolve({}) }), ["Save new version", "Hey Ana", "Versions", "Send a test", templateId]],
   ["template old version", async () => (await import("@/app/dashboard/templates/[id]/page")).default({ params: Promise.resolve({ id: templateId }), searchParams: Promise.resolve({ v: "1" }) }), ["Viewing v1", "Restore as v3", "Hi Ana"]],
-  ["health", async () => (await import("@/app/dashboard/health/page")).default(), ["Queue &amp; health"]],
+  ["health", async () => (await import("@/app/dashboard/health/page")).default(), ["Sending status"]],
 ];
 
 describe("first-run setup guide (Phase 8)", () => {
@@ -145,7 +145,21 @@ describe("every dashboard page server-renders", () => {
   it("layout + nav render", async () => {
     const Layout = (await import("@/app/dashboard/layout")).default;
     const out = await html(await Layout({ children: createElement("p", null, "child") }));
-    expect(out).toContain("Suppressions"); expect(out).toContain("child"); expect(out).toContain('aria-current="page"');
+    // The seeded tenant has sent mail, so the full navigation shows.
+    expect(out).toContain("Blocked addresses"); expect(out).toContain("Advanced"); expect(out).toContain("child"); expect(out).toContain('aria-current="page"');
+  });
+
+  it("nav shows only setup pages until the first send", async () => {
+    const owner = tenant.current.id;
+    tenant.current.id = await createTestUser("brand-new@example.test");
+    try {
+      const Layout = (await import("@/app/dashboard/layout")).default;
+      const out = await html(await Layout({ children: createElement("p", null, "child") }));
+      for (const shown of ["Overview", "Domains", "API keys", "Start sending to anyone"]) expect(out).toContain(shown);
+      for (const hidden of ["Activity", "Problems", "Templates", "Blocked addresses", "Advanced", "Webhooks", "Sending status"]) expect(out).not.toContain(hidden);
+    } finally {
+      tenant.current.id = owner;
+    }
   });
 });
 

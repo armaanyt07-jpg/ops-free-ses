@@ -14,10 +14,18 @@ import { CopyButton } from "@/components/dashboard/copy-button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 
-function Submit({ idle, busy }: { idle: string; busy: string }) {
+function Submit({
+  idle,
+  busy,
+  variant,
+}: {
+  idle: string;
+  busy: string;
+  variant?: "outline";
+}) {
   const { pending } = useFormStatus();
   return (
-    <Button type="submit" disabled={pending}>
+    <Button type="submit" variant={variant} disabled={pending}>
       {pending ? busy : idle}
     </Button>
   );
@@ -105,7 +113,14 @@ export function QuickKeyStep({
 }
 
 /** One click for the SNS + SES wiring that used to be four manual steps. */
-export function ConnectEventsButton({ local }: { local: boolean }) {
+export function ConnectEventsButton({
+  local,
+  connected = false,
+}: {
+  local: boolean;
+  /** Already confirmed: the same action, offered as a quiet "re-apply". */
+  connected?: boolean;
+}) {
   const [state, action] = useActionState<ConnectEventsState>(connectEventsAction, {});
 
   return (
@@ -130,7 +145,11 @@ export function ConnectEventsButton({ local }: { local: boolean }) {
           Connect events
         </Button>
       ) : (
-        <Submit idle="Connect events" busy="Setting up in AWS…" />
+        <Submit
+          idle={connected ? "Apply to new domains" : "Connect events"}
+          busy="Setting up in AWS…"
+          variant={connected ? "outline" : undefined}
+        />
       )}
     </form>
   );
