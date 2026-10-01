@@ -64,7 +64,7 @@ export function DashboardPreview() {
           </h2>
           <p className="text-muted-foreground max-w-sm text-sm">
             Every message, bounce and complaint lands here — alongside domain
-            verification, API keys and queue health.
+            verification, API keys and sending status.
           </p>
         </div>
 
@@ -149,7 +149,7 @@ export function DashboardPreview() {
                 </Card>
                 <Card size="sm" className="gap-1.5 py-3.5">
                   <CardHeader className="px-3.5">
-                    <CardTitle className="text-sm font-medium">Queue health</CardTitle>
+                    <CardTitle className="text-sm font-medium">Sending status</CardTitle>
                   </CardHeader>
                   <CardContent className="flex items-center gap-1.5 px-3.5 text-sm">
                     <CheckCircle2 className="size-4 text-emerald-700" aria-hidden />

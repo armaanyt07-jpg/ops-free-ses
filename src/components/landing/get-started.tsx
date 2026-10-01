@@ -55,19 +55,19 @@ const STEPS: Step[] = [
     body: (
       <>
         One click sets up Amazon SNS in your account, so every email&apos;s
-        outcome shows up in the dashboard and bounced addresses are suppressed
-        automatically.
+        outcome shows up in the dashboard and bounced addresses are added to your
+        blocked addresses automatically.
       </>
     ),
   },
   {
-    title: "Leave the SES sandbox",
+    title: "Start sending to anyone",
     optional: true,
     body: (
       <>
         New SES accounts can only send to verified addresses, up to 200 emails a
         day.{" "}
-        <span className="text-foreground font-medium">Production access</span>{" "}
+        <span className="text-foreground font-medium">Start sending to anyone</span>{" "}
         prepares the request for you to submit to AWS, which usually reviews it
         within a day.
       </>

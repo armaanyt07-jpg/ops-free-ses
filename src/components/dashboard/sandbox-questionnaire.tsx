@@ -164,7 +164,7 @@ export function SandboxQuestionnaire({
         {step === 0 ? (
           <>
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="AWS region" htmlFor="q-region" hint="Production access is granted per region — the region of this environment's credential.">
+              <Field label="AWS region" htmlFor="q-region" hint="Sending access is granted per region — the region of this environment's credential.">
                 <Input id="q-region" value={form.region ?? ""} onChange={(e) => set("region", e.target.value)} placeholder="ap-south-1" />
               </Field>
               <Field label="Mail type" htmlFor="q-mail">

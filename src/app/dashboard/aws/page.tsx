@@ -73,7 +73,7 @@ function CredentialCard({ credential }: { credential: CredentialSummary }) {
           account.productionAccessEnabled ? (
             <p className="flex items-center gap-2 text-sm">
               <CheckCircle2 className="size-4 text-emerald-700" aria-hidden />
-              Production access — can send to any recipient.
+              Approved to send to any recipient.
             </p>
           ) : (
             <Alert>
@@ -81,7 +81,7 @@ function CredentialCard({ credential }: { credential: CredentialSummary }) {
               <AlertTitle>SES sandbox</AlertTitle>
               <AlertDescription>
                 This account can only send to addresses verified in SES (and to SES&apos;s
-                mailbox simulator). Request production access in the SES console before sending
+                mailbox simulator). Use “Start sending to anyone” to request access before sending
                 to real users.
               </AlertDescription>
             </Alert>

@@ -33,7 +33,7 @@ const EVENT_PATH: Node[] = [
   { icon: Webhook, label: "SNS events" },
   { icon: Zap, label: "Ops-Free webhook" },
   { icon: CheckCircle2, label: "Delivery / bounce / complaint" },
-  { icon: LayoutDashboard, label: "Dashboard & suppression" },
+  { icon: LayoutDashboard, label: "Dashboard & blocked addresses" },
 ];
 
 function DiagramNode({ node }: { node: Node }) {
