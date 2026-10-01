@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
+import { log } from "@/lib/api/logger";
 import { createClient } from "@/lib/supabase/server";
 
 const credentialsSchema = z.object({
@@ -37,6 +38,13 @@ export async function signIn(
   const { error } = await supabase.auth.signInWithPassword(parsed.data);
 
   if (error) {
+    // The user sees one generic message; the cause goes to the server log.
+    log.warn({
+      event: "auth.signin_failed",
+      requestId: "auth",
+      status: String(error.status ?? ""),
+      errorCode: error.code ?? error.name,
+    });
     return { error: "Those credentials were not accepted." };
   }
 
@@ -62,6 +70,12 @@ export async function signUp(
   const { data, error } = await supabase.auth.signUp(parsed.data);
 
   if (error) {
+    log.warn({
+      event: "auth.signup_failed",
+      requestId: "auth",
+      status: String(error.status ?? ""),
+      errorCode: error.code ?? error.name,
+    });
     return { error: "That account could not be created." };
   }
 
