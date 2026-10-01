@@ -14,12 +14,17 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
+
+      # Integration tests spawn a throwaway redis-server per file
+      # (tests/support/test-redis.ts); the binary just needs to be on PATH.
+      - name: Install redis-server
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq redis-server
 
       - run: npm ci
 
@@ -32,7 +37,7 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      # Self-contained: PGlite for PostgreSQL, SES mocked, a throwaway
-      # ENCRYPTION_KEY from tests/support/setup.ts. No secrets needed.
+      # Self-contained: PGlite for PostgreSQL, local redis-server, SES mocked,
+      # a throwaway ENCRYPTION_KEY from tests/support/setup.ts. No secrets.
       - name: Unit and integration tests
         run: npm test
