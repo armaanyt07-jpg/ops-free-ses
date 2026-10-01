@@ -29,22 +29,42 @@ import { Wordmark } from "@/components/brand/wordmark";
  * nothing scrolls sideways on a phone. The active page is marked with
  * `aria-current`.
  */
-const GROUPS = [
+type NavItem = {
+  href: string;
+  label: string;
+  icon: typeof Activity;
+  exact?: boolean;
+  /** Only shown once the account has sent something. */
+  afterFirstSend?: boolean;
+};
+type NavGroup = {
+  label: string | null;
+  items: NavItem[];
+  /** Collapsed by default; opens when one of its pages is active. */
+  collapsible?: boolean;
+  afterFirstSend?: boolean;
+};
+
+const GROUPS: NavGroup[] = [
   {
     label: null,
     items: [
       { href: "/dashboard", label: "Overview", icon: LayoutDashboard, exact: true },
-      { href: "/dashboard/activity", label: "Activity", icon: Activity },
-      { href: "/dashboard/errors", label: "Errors", icon: AlertTriangle },
+      { href: "/dashboard/activity", label: "Activity", icon: Activity, afterFirstSend: true },
+      { href: "/dashboard/errors", label: "Problems", icon: AlertTriangle, afterFirstSend: true },
     ],
   },
   {
     label: "Sending",
     items: [
-      { href: "/dashboard/templates", label: "Templates", icon: FileCode2 },
       { href: "/dashboard/domains", label: "Domains", icon: Globe },
-      { href: "/dashboard/suppressions", label: "Suppressions", icon: ShieldOff },
-      { href: "/dashboard/webhooks", label: "Webhooks", icon: Webhook },
+      { href: "/dashboard/templates", label: "Templates", icon: FileCode2, afterFirstSend: true },
+      {
+        href: "/dashboard/suppressions",
+        label: "Blocked addresses",
+        icon: ShieldOff,
+        afterFirstSend: true,
+      },
     ],
   },
   {
@@ -52,51 +72,90 @@ const GROUPS = [
     items: [
       { href: "/dashboard/api-keys", label: "API keys", icon: KeyRound },
       { href: "/dashboard/aws", label: "AWS", icon: Cloud },
-      { href: "/dashboard/sandbox", label: "Production access", icon: Rocket },
+      { href: "/dashboard/sandbox", label: "Start sending to anyone", icon: Rocket },
     ],
   },
   {
-    label: "System",
-    items: [{ href: "/dashboard/health", label: "Queue & health", icon: Gauge }],
+    label: "Advanced",
+    collapsible: true,
+    afterFirstSend: true,
+    items: [
+      { href: "/dashboard/webhooks", label: "Webhooks", icon: Webhook },
+      { href: "/dashboard/health", label: "Sending status", icon: Gauge },
+    ],
   },
-] as const;
+];
 
 function isActive(pathname: string, href: string, exact?: boolean) {
   return exact ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
 }
 
-function NavLinks({ pathname, onNavigate }: { pathname: string; onNavigate?: () => void }) {
+function NavLinks({
+  pathname,
+  hasSent,
+  onNavigate,
+}: {
+  pathname: string;
+  hasSent: boolean;
+  onNavigate?: () => void;
+}) {
+  const link = (item: NavItem) => {
+    const active = isActive(pathname, item.href, item.exact);
+    const Icon = item.icon;
+    return (
+      <Link
+        key={item.href}
+        href={item.href}
+        onClick={onNavigate}
+        aria-current={active ? "page" : undefined}
+        className={`flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors ${
+          active
+            ? "bg-primary/10 text-primary font-medium"
+            : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+        }`}
+      >
+        <Icon className="size-4 shrink-0" aria-hidden />
+        {item.label}
+      </Link>
+    );
+  };
+
+  // Before the first send, show only what setup needs. A page the user is
+  // already on stays visible so the active marker never disappears.
+  const visible = (item: NavItem) =>
+    hasSent || !item.afterFirstSend || isActive(pathname, item.href, item.exact);
+
   return (
     <nav aria-label="Dashboard" className="space-y-5">
-      {GROUPS.map((group) => (
-        <div key={group.label ?? "main"} className="space-y-1">
-          {group.label ? (
-            <p className="text-muted-foreground px-3 text-xs font-medium tracking-wide uppercase">
-              {group.label}
-            </p>
-          ) : null}
-          {group.items.map((item) => {
-            const active = isActive(pathname, item.href, "exact" in item ? item.exact : false);
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={onNavigate}
-                aria-current={active ? "page" : undefined}
-                className={`flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors ${
-                  active
-                    ? "bg-primary/10 text-primary font-medium"
-                    : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
-                }`}
-              >
-                <Icon className="size-4 shrink-0" aria-hidden />
-                {item.label}
-              </Link>
-            );
-          })}
-        </div>
-      ))}
+      {GROUPS.map((group) => {
+        const items = group.items.filter(visible);
+        if (!items.length || (group.afterFirstSend && !hasSent)) return null;
+        const heading = group.label ? (
+          <p className="text-muted-foreground px-3 text-xs font-medium tracking-wide uppercase">
+            {group.label}
+          </p>
+        ) : null;
+        if (group.collapsible) {
+          const hasActive = items.some((i) => isActive(pathname, i.href, i.exact));
+          return (
+            <details key={group.label} open={hasActive} className="group space-y-1">
+              <summary className="text-muted-foreground hover:text-foreground cursor-pointer list-none px-3 text-xs font-medium tracking-wide uppercase">
+                {group.label}
+                <span aria-hidden className="ml-1 inline-block transition-transform group-open:rotate-90">
+                  ›
+                </span>
+              </summary>
+              <div className="space-y-1 pt-1">{items.map(link)}</div>
+            </details>
+          );
+        }
+        return (
+          <div key={group.label ?? "main"} className="space-y-1">
+            {heading}
+            {items.map(link)}
+          </div>
+        );
+      })}
     </nav>
   );
 }
@@ -119,7 +178,7 @@ function SignOut({ email }: { email: string }) {
   );
 }
 
-export function AppNav({ email }: { email: string }) {
+export function AppNav({ email, hasSent }: { email: string; hasSent: boolean }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
@@ -144,7 +203,7 @@ export function AppNav({ email }: { email: string }) {
       <aside className="bg-muted/30 sticky top-0 hidden h-screen flex-col gap-6 overflow-y-auto border-r px-4 py-5 lg:flex">
         {brand}
         <div className="flex-1">
-          <NavLinks pathname={pathname} />
+          <NavLinks pathname={pathname} hasSent={hasSent} />
         </div>
         <SignOut email={email} />
       </aside>
@@ -166,7 +225,7 @@ export function AppNav({ email }: { email: string }) {
         </div>
         {open ? (
           <div id="mobile-nav" className="max-h-[calc(100dvh-3.5rem)] space-y-5 overflow-y-auto border-t px-4 py-4">
-            <NavLinks pathname={pathname} onNavigate={() => setOpen(false)} />
+            <NavLinks pathname={pathname} hasSent={hasSent} onNavigate={() => setOpen(false)} />
             <SignOut email={email} />
           </div>
         ) : null}

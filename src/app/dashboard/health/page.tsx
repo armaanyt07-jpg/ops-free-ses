@@ -73,7 +73,7 @@ export default async function HealthPage() {
   return (
     <div className="space-y-8">
       <PageHeader
-        title="Queue & health"
+        title="Sending status"
         description="Queue depth, retries, dead-lettered jobs, worker heartbeats and webhook lag."
       />
 

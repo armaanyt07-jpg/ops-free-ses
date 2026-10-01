@@ -57,7 +57,7 @@ export default async function ErrorsPage({
   return (
     <div className="space-y-8">
       <PageHeader
-        title="Errors"
+        title="Problems"
         description="What went wrong, grouped by cause, with what to do about each."
         actions={
           <SegmentedLinks

@@ -60,7 +60,7 @@ export default async function SuppressionsPage({
   return (
     <div className="space-y-8">
       <PageHeader
-        title="Suppressions"
+        title="Blocked addresses"
         description={
           <>
             Addresses that will not be sent to. The API refuses them with{" "}

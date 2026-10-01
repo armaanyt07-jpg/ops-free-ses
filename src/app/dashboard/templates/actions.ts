@@ -198,7 +198,7 @@ export async function sendTemplateTest(
     if (result.reason === "suppressed") {
       return { error: `${result.suppressed.join(", ")} is on the suppression list, so nothing was sent.` };
     }
-    return { error: "The queue did not accept the message. Check Queue & health and try again." };
+    return { error: "The queue did not accept the message. Check Sending status and try again." };
   }
 
   revalidatePath("/dashboard", "layout");

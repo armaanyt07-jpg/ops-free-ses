@@ -55,7 +55,7 @@ export default async function SandboxPage() {
   return (
     <div className="space-y-8">
       <PageHeader
-        title="Production access"
+        title="Start sending to anyone"
         description="Prepare the request that takes your SES account out of the sandbox. You answer; the assistant only arranges your answers. You review, then submit it in AWS yourself."
       />
 
