@@ -6,11 +6,21 @@ import { z } from "zod";
 
 import { log } from "@/lib/api/logger";
 import { createClient } from "@/lib/supabase/server";
+import { appOrigin } from "@/server/public-url";
+
+const emailSchema = z.string().email("Enter a valid email address");
+const passwordSchema = z.string().min(8, "Password must be at least 8 characters");
 
 const credentialsSchema = z.object({
-  email: z.string().email("Enter a valid email address"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
+  email: emailSchema,
+  password: passwordSchema,
 });
+
+/** Where auth emails send the user back to: `/auth/confirm`, then `next`. */
+async function confirmUrl(next: string): Promise<string> {
+  const { origin } = await appOrigin();
+  return `${origin}/auth/confirm?next=${encodeURIComponent(next)}`;
+}
 
 export interface AuthFormState {
   error?: string;
@@ -67,7 +77,10 @@ export async function signUp(
   }
 
   const supabase = await createClient();
-  const { data, error } = await supabase.auth.signUp(parsed.data);
+  const { data, error } = await supabase.auth.signUp({
+    ...parsed.data,
+    options: { emailRedirectTo: await confirmUrl("/dashboard") },
+  });
 
   if (error) {
     log.warn({
@@ -88,6 +101,84 @@ export async function signUp(
     };
   }
 
+  revalidatePath("/", "layout");
+  redirect("/dashboard");
+}
+
+/**
+ * Sends a password-reset link. The reply is the same whether or not the
+ * address has an account, for the same anti-enumeration reason as sign-in.
+ */
+export async function requestPasswordReset(
+  _prev: AuthFormState,
+  formData: FormData,
+): Promise<AuthFormState> {
+  const parsed = emailSchema.safeParse(formData.get("email"));
+  if (!parsed.success) {
+    return { error: "Enter a valid email address." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.resetPasswordForEmail(parsed.data, {
+    redirectTo: await confirmUrl("/reset-password"),
+  });
+
+  if (error) {
+    log.warn({
+      event: "auth.reset_request_failed",
+      requestId: "auth",
+      status: String(error.status ?? ""),
+      errorCode: error.code ?? error.name,
+    });
+    // A rate limit is the one failure worth telling the user about: the link
+    // will not arrive, and retrying immediately will not help.
+    if (error.status === 429) {
+      return { error: "Too many reset emails were requested. Wait a few minutes and try again." };
+    }
+  }
+
+  return {
+    notice: "If that address has an account, a reset link is on its way. Open it in this browser.",
+  };
+}
+
+/**
+ * Sets a new password for the signed-in user. Reached from the reset email:
+ * `/auth/confirm` has already turned the link into a session.
+ */
+export async function updatePassword(
+  _prev: AuthFormState,
+  formData: FormData,
+): Promise<AuthFormState> {
+  const parsed = z
+    .object({ password: passwordSchema, confirm: z.string() })
+    .refine((v) => v.password === v.confirm, { message: "The passwords do not match." })
+    .safeParse({ password: formData.get("password"), confirm: formData.get("confirm") });
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Check the password you entered." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.updateUser({ password: parsed.data.password });
+
+  if (error) {
+    log.warn({
+      event: "auth.password_update_failed",
+      requestId: "auth",
+      status: String(error.status ?? ""),
+      errorCode: error.code ?? error.name,
+    });
+    if (error.code === "same_password") {
+      return { error: "Choose a password different from your current one." };
+    }
+    if (error.code === "weak_password") {
+      return { error: "That password is too weak. Use a longer one." };
+    }
+    return { error: "The password could not be changed. Request a new reset link and try again." };
+  }
+
+  log.security("password_changed", (await supabase.auth.getUser()).data.user?.id ?? "unknown");
   revalidatePath("/", "layout");
   redirect("/dashboard");
 }

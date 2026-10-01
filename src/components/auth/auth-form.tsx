@@ -19,15 +19,27 @@ function SubmitButton({ label }: { label: string }) {
   );
 }
 
+type Action = (prev: AuthFormState, formData: FormData) => Promise<AuthFormState>;
+
+/**
+ * The fields each auth page needs:
+ * - `credentials`: email + password (sign in, sign up)
+ * - `email`: email only (request a password reset)
+ * - `new-password`: new password twice (set a new password)
+ */
+export type AuthFormFields = "credentials" | "email" | "new-password";
+
 export function AuthForm({
   action,
   submitLabel,
+  fields = "credentials",
+  newAccount = false,
 }: {
-  action: (
-    prev: AuthFormState,
-    formData: FormData,
-  ) => Promise<AuthFormState>;
+  action: Action;
   submitLabel: string;
+  fields?: AuthFormFields;
+  /** Sign-up: lets password managers offer to generate a password. */
+  newAccount?: boolean;
 }) {
   const [state, formAction] = useActionState<AuthFormState, FormData>(
     action,
@@ -36,28 +48,59 @@ export function AuthForm({
 
   return (
     <form action={formAction} className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="email">Email</Label>
-        <Input
-          id="email"
-          name="email"
-          type="email"
-          autoComplete="email"
-          required
-        />
-      </div>
+      {fields !== "new-password" ? (
+        <div className="space-y-2">
+          <Label htmlFor="email">Email</Label>
+          <Input
+            id="email"
+            name="email"
+            type="email"
+            autoComplete="email"
+            required
+          />
+        </div>
+      ) : null}
 
-      <div className="space-y-2">
-        <Label htmlFor="password">Password</Label>
-        <Input
-          id="password"
-          name="password"
-          type="password"
-          autoComplete="current-password"
-          minLength={8}
-          required
-        />
-      </div>
+      {fields === "credentials" ? (
+        <div className="space-y-2">
+          <Label htmlFor="password">Password</Label>
+          <Input
+            id="password"
+            name="password"
+            type="password"
+            autoComplete={newAccount ? "new-password" : "current-password"}
+            minLength={8}
+            required
+          />
+        </div>
+      ) : null}
+
+      {fields === "new-password" ? (
+        <>
+          <div className="space-y-2">
+            <Label htmlFor="password">New password</Label>
+            <Input
+              id="password"
+              name="password"
+              type="password"
+              autoComplete="new-password"
+              minLength={8}
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="confirm">Confirm new password</Label>
+            <Input
+              id="confirm"
+              name="confirm"
+              type="password"
+              autoComplete="new-password"
+              minLength={8}
+              required
+            />
+          </div>
+        </>
+      ) : null}
 
       {state.error ? (
         <Alert variant="destructive">
