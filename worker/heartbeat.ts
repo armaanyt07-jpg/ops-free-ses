@@ -12,9 +12,13 @@ import type { Redis } from "ioredis";
  */
 export const HEARTBEAT_PREFIX = "worker:heartbeat:";
 
-/** Refresh cadence. The TTL is deliberately longer, to tolerate one miss. */
-export const HEARTBEAT_INTERVAL_MS = 10_000;
-export const HEARTBEAT_TTL_MS = 35_000;
+/**
+ * Refresh cadence. The TTL is deliberately longer, to tolerate one miss. Each
+ * beat is a billed Upstash command, so not more often than the uptime probe
+ * and the System Health screen need (see the idle-cost note in index.ts).
+ */
+export const HEARTBEAT_INTERVAL_MS = 30_000;
+export const HEARTBEAT_TTL_MS = 75_000;
 
 export interface WorkerHeartbeat {
   workerId: string;

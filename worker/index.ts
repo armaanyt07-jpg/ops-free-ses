@@ -63,6 +63,22 @@ const utilRedis = createRedis("util");
 
 const heartbeat = new Heartbeat(utilRedis, WORKER_ID, CONCURRENCY);
 
+/*
+ * Idle cost. Upstash bills every command, and an idle BullMQ worker is not
+ * free: each time its blocking wait for a job times out (`drainDelay`), it
+ * sends a BZPOPMIN and a script; each stalled check is another script. With
+ * BullMQ's defaults (5 s, 30 s) this process sent 58 commands a minute while
+ * idle (measured with MONITOR), about 2.5M a month against the free tier's
+ * 500k. The values below bring it to about 5 a minute.
+ *
+ * A longer `drainDelay` does not slow anything down: adding a job wakes the
+ * blocked worker at once. It only sets how often an idle worker re-asks. With
+ * delayed jobs pending (retries, domain polls), BullMQ wakes for the next one
+ * regardless, capped at 10 s.
+ */
+const SEND_DRAIN_DELAY_S = 60;
+const DOMAIN_DRAIN_DELAY_S = 300;
+
 const worker = new Worker<SendJobData>(
   SEND_QUEUE_NAME,
   createSendProcessor({ redis: utilRedis }),
@@ -74,8 +90,11 @@ const worker = new Worker<SendJobData>(
     lockDuration: 60_000,
     // A job whose worker died is returned to `wait` rather than lost. This is
     // what makes "worker failure does not silently lose accepted jobs" true.
-    stalledInterval: 30_000,
+    // Checked every 2 minutes: a crashed send is retried within about 3
+    // (this interval plus the lock), at a quarter of the default's cost.
+    stalledInterval: 120_000,
     maxStalledCount: 2,
+    drainDelay: SEND_DRAIN_DELAY_S,
     settings: {
       backoffStrategy: (attemptsMade: number) => backoffDelayMs(attemptsMade),
     },
@@ -97,6 +116,8 @@ const domainWorker = new Worker<DomainJobData>(
     connection: domainConnection,
     concurrency: 2,
     lockDuration: 60_000,
+    stalledInterval: 300_000,
+    drainDelay: DOMAIN_DRAIN_DELAY_S,
     settings: {
       backoffStrategy: (attemptsMade: number) => domainPollDelayMs(attemptsMade),
     },

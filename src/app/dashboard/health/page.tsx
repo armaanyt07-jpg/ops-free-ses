@@ -138,7 +138,7 @@ export default async function HealthPage() {
         <CardHeader>
           <CardTitle>Workers</CardTitle>
           <CardDescription>
-            Each worker refreshes a heartbeat every 10s. A worker that dies
+            Each worker refreshes a heartbeat every 30s. A worker that dies
             stops refreshing and its record expires on its own.
           </CardDescription>
         </CardHeader>

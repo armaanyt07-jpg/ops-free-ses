@@ -150,7 +150,7 @@ This is the exit criterion with the most ways to get it wrong.
    committed, the row is marked `failed` rather than stranded in `queued` with
    nothing to drive it.
 3. **A dead worker's job is recovered.** BullMQ's stalled-job detection
-   (`lockDuration: 60s`, `stalledInterval: 30s`, `maxStalledCount: 2`) returns
+   (`lockDuration: 60s`, `stalledInterval: 120s` — 30s until 2026-10-02, raised to cut idle Upstash commands — `maxStalledCount: 2`) returns
    an abandoned job to `wait` for another worker. Tested by killing a worker
    mid-SES-call and asserting a second worker completes the message.
 4. **Shutdown drains.** `SIGTERM`/`SIGINT` call `worker.close()`, which stops

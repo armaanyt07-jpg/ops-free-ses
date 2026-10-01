@@ -75,7 +75,7 @@ the worker host's equivalent) to Datadog, Better Stack or Axiom.
 | --- | --- | --- |
 | `GET /api/health` | the process serves; no dependency checks | liveness probe |
 | `GET /api/health/ready` | Postgres and Redis answer within 2 s; 503 otherwise; cached 5 s; reveals only ok/latency | readiness / load-balancer check, uptime monitor |
-| `GET /api/health/worker` | at least one worker heartbeat is fresh (< 35 s); 503 `down` when none is, 503 `unknown` when Redis doesn't answer within 3 s; cached 5 s; reveals only a status and a count | uptime monitor for the worker |
+| `GET /api/health/worker` | at least one worker heartbeat is fresh (< 75 s); 503 `down` when none is, 503 `unknown` when Redis doesn't answer within 3 s; cached 5 s; reveals only a status and a count | uptime monitor for the worker |
 | `/dashboard/health` | queue depth, dead letter (tenant's own), worker heartbeats, webhook lag | operators |
 
 ## Alerts to configure

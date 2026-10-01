@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { HEARTBEAT_TTL_MS } from "../../worker/heartbeat";
 import { startTestRedis, type TestRedis } from "../support/test-redis";
 
 /**
@@ -42,8 +43,8 @@ function heartbeat(workerId: string, beatAt: Date) {
 
 describe("worker health probe", () => {
   it("is 200 with the count of fresh heartbeats", async () => {
-    await redis.client.set("worker:heartbeat:w-1", heartbeat("w-1", new Date()), "PX", 35_000);
-    await redis.client.set("worker:heartbeat:w-2", heartbeat("w-2", new Date()), "PX", 35_000);
+    await redis.client.set("worker:heartbeat:w-1", heartbeat("w-1", new Date()), "PX", HEARTBEAT_TTL_MS);
+    await redis.client.set("worker:heartbeat:w-2", heartbeat("w-2", new Date()), "PX", HEARTBEAT_TTL_MS);
 
     expect(await probe()).toEqual({ status: 200, body: { status: "ok", workers: 2 } });
   });
@@ -53,7 +54,7 @@ describe("worker health probe", () => {
   });
 
   it("does not count a heartbeat older than its TTL", async () => {
-    await redis.client.set("worker:heartbeat:w-1", heartbeat("w-1", new Date(Date.now() - 60_000)), "PX", 35_000);
+    await redis.client.set("worker:heartbeat:w-1", heartbeat("w-1", new Date(Date.now() - HEARTBEAT_TTL_MS - 1_000)), "PX", HEARTBEAT_TTL_MS);
 
     expect(await probe()).toEqual({ status: 503, body: { status: "down", workers: 0 } });
   });
@@ -62,13 +63,13 @@ describe("worker health probe", () => {
     const pipeline = redis.client.pipeline();
     for (let i = 0; i < 3_000; i++) pipeline.set(`bull:send:${i}`, "x");
     await pipeline.exec();
-    await redis.client.set("worker:heartbeat:w-1", heartbeat("w-1", new Date()), "PX", 35_000);
+    await redis.client.set("worker:heartbeat:w-1", heartbeat("w-1", new Date()), "PX", HEARTBEAT_TTL_MS);
 
     expect(await probe()).toEqual({ status: 200, body: { status: "ok", workers: 1 } });
   });
 
   it("reveals no host, process id or error text", async () => {
-    await redis.client.set("worker:heartbeat:w-1", heartbeat("w-1", new Date()), "PX", 35_000);
+    await redis.client.set("worker:heartbeat:w-1", heartbeat("w-1", new Date()), "PX", HEARTBEAT_TTL_MS);
 
     const { body } = await probe();
     expect(JSON.stringify(body)).not.toMatch(/railway-host-secret|4242|w-1/);
