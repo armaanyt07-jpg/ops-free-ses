@@ -102,6 +102,12 @@ Drain: **1,500 accepted → 1,500 terminal, 0 lost, 0 errors.**
 
 The worker side is not the bottleneck: 478 msg/s in the queue stress test.
 
+> [!WARNING]
+> **Correction (2026-10-02).** That figure was measured against a local
+> database and Redis. In production the worker's database round trips are the
+> bottleneck for *latency*: each send takes about **5 seconds** from `queued`
+> to `sent`. See [`PHASE-3.md` §10.1](../PHASE-3.md#101-production-finding-2026-10-02-every-send-takes-about-5-seconds).
+
 ---
 
 ## Observability

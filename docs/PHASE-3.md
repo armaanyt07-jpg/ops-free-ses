@@ -477,6 +477,77 @@ trade-offs, so it is **not changed here**. The options:
 Either way, re-measure in the deployed environment before claiming the SRS §5
 <100 ms target.
 
+### 10.1 Production finding (2026-10-02): every send takes about 5 seconds
+
+> [!WARNING]
+> **Known issue — deferred.** In production, an email takes **about 5 seconds
+> from `queued` to `sent`** (the moment Amazon SES accepts it). The API answers
+> `202` as soon as the job is queued, before the worker runs, so callers are not
+> blocked; the delay is in the background worker. It is consistent, loses no mail, and was
+> **deliberately postponed until there are real users** (decision, 2026-10-02).
+
+**Measured** on the deployed system (Vercel `bom1`, worker on Railway
+Singapore, Supabase `ap-south-1`), from `sent_at - queued_at` in `email_logs`:
+
+| Sent (UTC) | queued → sent |
+| --- | --- |
+| 10-01 11:33 | 4.89 s |
+| 10-01 11:40 | 5.29 s |
+| 10-01 12:06 | 4.80 s |
+| 10-01 12:07 | 4.82 s |
+| 10-01 12:17 | 5.02 s |
+| 10-02 06:04 | 4.89 s |
+| 10-02 06:15 | 5.04 s |
+
+The one fast send (0.7 s, 09-30) ran with the worker on a laptop next to the
+database.
+
+**Where the time goes.** The worker's `worker.sent` log line now carries a
+per-step breakdown (commit `1c17324`). One production send, 5215 ms inside the
+worker:
+
+| Step | Time |
+| --- | --- |
+| Waiting in Redis for the worker | 132 ms |
+| Load the AWS credential (one DB query) | **2160 ms** |
+| Suppression re-check (one DB query) | **537 ms** |
+| Limiter, mark sending, the SES call, record the result | ~2500 ms combined (the log viewer truncated the split) |
+
+The queue is not the problem. The cost is the worker's database round trips
+across the network, plus opening a connection.
+
+**Ruled out:** retries (`error_code` is null on every row, and a first retry
+waits exactly 5000 ms, which is a coincidence worth knowing about); the rate
+limiter (waits ≤ ~1 s in the sandbox); the idle-worker tuning in `b68335e`
+(a send after it still took 4.89 s).
+
+**Likely cause (an inference, not yet confirmed by an A/B test):**
+
+1. `src/db/index.ts` closes idle connections after `idle_timeout: 20` s, which
+   suits serverless. The worker's sends are minutes apart, so each one starts
+   by opening a new connection (TCP, TLS, login). The credential query costs
+   ~1.6 s more than the suppression query, which matches.
+2. `prepare: false` (§10 above) makes every query two round trips. At the
+   worker's distance from the database that is ~540 ms per query, not 51 ms.
+3. About eight queries per send add up.
+
+**Fixes, cheapest first** (none shipped):
+
+1. Keep one worker connection warm with a cheap query every ~10 s (worker
+   only; leave the web app's setting). Expected ~5 s → ~3 s.
+2. Cache the decrypted credential in the worker for a minute or two. Needs care
+   around key rotation and credential changes.
+3. Prepared statements for the worker via Supabase's session pooler (port
+   5432). This is the open `prepare` decision from §10.
+4. Verify where the Railway worker and the Upstash Redis actually run; ~270 ms
+   per round trip is more than Singapore to Mumbai should cost.
+
+To confirm the cause cheaply: send two emails a few seconds apart. If the
+second is much faster than 5 s, the cold connection is the main cost.
+
+Do not quote the SRS §5 latency target as met for end-to-end delivery. §5
+speaks about ingestion; this is the background hand-off to SES.
+
 ---
 
 ## 11. Exit criteria

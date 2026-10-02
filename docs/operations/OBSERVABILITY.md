@@ -26,6 +26,21 @@ the job, into the worker's lines.
 | Abuse | `abuse.limiter_unavailable` (limiter failed open) |
 | Errors | `error.unhandled`, with `fingerprint`, `source` (route/page/action/worker/process), redacted `message`, `frames` |
 
+### Reading `worker.sent` timings
+
+Every successful send logs `durationMs` (total time inside the worker) and a
+`detail` string with the breakdown, for example:
+
+```
+wait=132ms credential=2160ms suppression=537ms limiter=… marking=… ses=… record=…
+```
+
+`wait` is how long the job sat in Redis before this worker took it; the rest
+are the worker's steps in order. A large `credential` or `suppression` points at
+database round trips, a large `ses` at the AWS call. Production currently shows
+about 5 s in total; see `docs/PHASE-3.md` §10.1. Some log viewers truncate
+`detail`; expand the row or download the logs to see all of it.
+
 ## Error monitoring
 
 Unexpected errors from API routes (error boundary), pages and Server Actions

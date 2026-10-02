@@ -16,11 +16,18 @@ starts.
 | --- | --- | --- |
 | 1 | Foundation & core sending engine | **Complete** — see [`docs/PHASE-1.md`](docs/PHASE-1.md) |
 | 2 | Redis/BullMQ queue, rate limiting, retries | **Complete** — see [`docs/PHASE-2.md`](docs/PHASE-2.md) |
-| 3 | Domains, SNS webhooks, suppression | **Code complete** — see [`docs/PHASE-3.md`](docs/PHASE-3.md). Real-AWS checks (domain, SNS) deferred — no domain or public endpoint yet |
+| 3 | Domains, SNS webhooks, suppression | **Complete** — see [`docs/PHASE-3.md`](docs/PHASE-3.md). Verified against real AWS 2026-10-01/02 (SNS, signed webhooks, DKIM domain, events) |
 | 4 | Product dashboard & developer experience | **Code complete** — see [`docs/PHASE-4.md`](docs/PHASE-4.md). Browser check at phone width pending |
 | 5 | Template system | **Code complete** — see [`docs/PHASE-5.md`](docs/PHASE-5.md). Browser check pending |
 | 6 | AWS sandbox exit assistant | **Code complete** — see [`docs/PHASE-6.md`](docs/PHASE-6.md). Browser check pending |
-| 7 | Production hardening | **Complete except deployment** — see [`docs/PHASE-7.md`](docs/PHASE-7.md). Evidence: [`docs/testing/EVIDENCE.md`](docs/testing/EVIDENCE.md) |
+| 7 | Production hardening | **Complete** — see [`docs/PHASE-7.md`](docs/PHASE-7.md). Evidence: [`docs/testing/EVIDENCE.md`](docs/testing/EVIDENCE.md) |
+| 8 | Guided onboarding & setup automation | **Complete** — see [`docs/PHASE-8.md`](docs/PHASE-8.md). Deployed at www.opsfree.in; Route 53 automation untested |
+
+> [!WARNING]
+> **Known issue: sends take about 5 seconds from `queued` to `sent` in production.**
+> The API answers `202` as soon as the job is queued, so callers aren't blocked,
+> and no mail is lost; the delay is the worker's database round trips. Deferred until there are real users. Cause,
+> measurements and fix options: [`docs/PHASE-3.md` §10.1](docs/PHASE-3.md#101-production-finding-2026-10-02-every-send-takes-about-5-seconds).
 
 ## Documentation
 
