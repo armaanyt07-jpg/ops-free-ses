@@ -62,6 +62,11 @@ describe("API routes authenticate", () => {
     "src/app/api/v1/send/route.ts": /authenticateApiKey\(/,
     "src/app/api/v1/domains/verify/route.ts": /authenticateApiKey\(/,
     "src/app/api/v1/webhooks/aws-sns/route.ts": /verifySnsSignature\(/,
+    // Phase 10: signature AND our exact topic; the message is a hint, proven
+    // later by assuming the role. Response URL is restricted to AWS buckets.
+    "src/app/api/v1/webhooks/aws-connect/route.ts": /verifySnsSignature\([\s\S]*platform\.topicArn[\s\S]*isTrustedResponseUrl\(/,
+    // Public by design: the customer-facing CloudFormation template, so it can be read first.
+    "src/app/aws-connect.yaml/route.ts": /buildConnectTemplate\(\)/,
     "src/app/auth/signout/route.ts": /request\.nextUrl\.origin/,
     // Authenticated by the one-time token in the emailed link; `next` is
     // restricted to same-site paths so the route is not an open redirect.
@@ -83,7 +88,7 @@ describe("API routes authenticate", () => {
   });
 
   it("public API routes apply the per-IP limit", () => {
-    for (const path of ["send", "domains/verify", "webhooks/aws-sns"]) {
+    for (const path of ["send", "domains/verify", "webhooks/aws-sns", "webhooks/aws-connect"]) {
       expect(read(join(SRC, "app/api/v1", path, "route.ts"))).toMatch(/checkLimit\(/);
     }
   });

@@ -28,6 +28,7 @@ password.
 | `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | optional | — | Cloudflare Turnstile site key (public). Plain Config type, needs a fresh build; see "Bot protection" below |
 | `SENTRY_DSN` | — | optional | the same DSN, for the worker |
 | `PUBLIC_APP_URL` | optional | — | Phase 8: base URL "Connect events" subscribes to SNS; defaults to the request host |
+| `PLATFORM_AWS_ACCESS_KEY_ID` / `_SECRET_ACCESS_KEY` / `_PRINCIPAL_ARN`, `AWS_CONNECT_TOPIC_ARN`, `AWS_CONNECT_TEMPLATE_URL` | optional, all or none | **both** | Phase 10: one-click "Connect AWS". Secrets: Vercel and the worker only. Setup in `docs/PHASE-10.md` |
 
 ## First deployment
 

@@ -64,6 +64,13 @@
       "when": 1790768512130,
       "tag": "0008_phase8_single_environment",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1790933751538,
+      "tag": "0009_phase10_one_click_aws_connect",
+      "breakpoints": true
     }
   ]
 }

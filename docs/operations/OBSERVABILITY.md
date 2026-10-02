@@ -19,10 +19,10 @@ the job, into the worker's lines.
 
 | Area | Events |
 | --- | --- |
-| API | `send.accepted`, `send.unauthorized`, `send.rate_limited`, `send.recipient_suppressed`, `send.idempotency_conflict`, `send.persist_failed`, `send.enqueue_failed`, `domains.verify` |
+| API | `send.accepted`, `send.unauthorized`, `send.rate_limited`, `send.recipient_suppressed`, `send.idempotency_conflict`, `send.persist_failed`, `send.enqueue_failed`, `domains.verify`, `aws_connect.untrusted_response_url`, `aws_connect.answered`, `aws_connect.failed`, `aws_connect.verify_failed` |
 | Worker | `worker.sent`, `worker.retryable_failure`, `worker.permanent_failure`, `worker.dead_lettered`, `worker.rate_limited`, `worker.suppressed`, `worker.no_credential`, `worker.domain_checked`, `worker.reconcile_failed`, `worker.accept_record_failed` |
 | Webhook | `sns.processed`, `sns.duplicate_ignored`, `sns.subscription_confirmed`, `sns.unsubscribed`, `sns.signature_rejected`, `sns.unknown_topic`, `sns.certificate_unavailable`, `sns.processing_failed` |
-| Security | `security.credential.saved/revoked/activated/deleted`, `security.api_key.created/revoked/rotated`, `security.domain.added/removed`, `security.sns_topic.registered/removed`, `security.suppression.added/removed`, `security.template.archived/unarchived`, `security.sandbox_request.reviewed` |
+| Security | `security.credential.saved/revoked/activated/deleted`, `security.aws_connect.started/callback/connected/stack_deleted`, `security.api_key.created/revoked/rotated`, `security.domain.added/removed`, `security.sns_topic.registered/removed`, `security.suppression.added/removed`, `security.template.archived/unarchived`, `security.sandbox_request.reviewed` |
 | Abuse | `abuse.limiter_unavailable` (limiter failed open) |
 | Errors | `error.unhandled`, with `fingerprint`, `source` (route/page/action/worker/process), redacted `message`, `frames` |
 

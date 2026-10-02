@@ -106,7 +106,7 @@ describe("storeCredential", () => {
     expect(row?.secretAccessKeyCiphertext).toBeDefined();
     expect(row?.secretAccessKeyCiphertext).not.toContain(SECRET);
     expect(
-      Buffer.from(row!.secretAccessKeyCiphertext, "base64").toString("utf8"),
+      Buffer.from(row!.secretAccessKeyCiphertext!, "base64").toString("utf8"),
     ).not.toContain(SECRET);
   });
 

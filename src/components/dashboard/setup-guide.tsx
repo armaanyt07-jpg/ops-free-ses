@@ -2,12 +2,11 @@ import { CheckCircle2, Lock } from "lucide-react";
 import Link from "next/link";
 
 import { checkDomainNow } from "@/app/dashboard/domains/actions";
-import { CredentialForm } from "@/components/dashboard/credential-form";
+import { AwsConnectOptions } from "@/components/dashboard/aws-connect-options";
 import { DnsRecords } from "@/components/dashboard/dns-records";
 import { DomainForm } from "@/components/dashboard/domain-form";
 import { EmailIdentityForm } from "@/components/dashboard/email-identity-form";
 import { EmailIdentityPending } from "@/components/dashboard/email-identity-status";
-import { IamSetup } from "@/components/dashboard/iam-setup";
 import { ConnectEventsButton, QuickKeyStep } from "@/components/dashboard/setup-actions";
 import { TestSendForm } from "@/components/dashboard/test-send-form";
 import { Button } from "@/components/ui/button";
@@ -167,15 +166,10 @@ export function SetupGuide({
                   ? `Connected · ${credential.awsRegion}${
                       credential.account && !credential.account.productionAccessEnabled ? " · SES sandbox" : ""
                     }`
-                  : "Emails are sent from your own Amazon SES account. We need an access key for it."
+                  : "Emails are sent from your own Amazon SES account. Connect it to get started."
               }
             >
-              {connected ? null : (
-                <div className="space-y-6">
-                  <IamSetup />
-                  <CredentialForm />
-                </div>
-              )}
+              {connected ? null : <AwsConnectOptions />}
             </Step>
 
             <Step

@@ -1,0 +1,108 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  Ops-Free SES, operator side of one-click "Connect AWS" (Phase 10).
+  Create this ONCE, in the operator's own AWS account, in region ap-south-1
+  (or whichever region you want customers' stacks to run in: the SNS topic and
+  the customer's stack must share a region). See docs/PHASE-10.md.
+
+Parameters:
+  TemplateBucketName:
+    Type: String
+    Description: A globally unique S3 bucket name that will hold the public connect template.
+    AllowedPattern: "[a-z0-9][a-z0-9.-]{2,62}"
+  WebhookUrl:
+    Type: String
+    Default: ""
+    Description: >-
+      Leave empty on the first create. After the app is deployed with the new
+      environment variables, UPDATE the stack and set this to
+      https://<your-domain>/api/v1/webhooks/aws-connect so the topic subscribes
+      (the app confirms the subscription itself).
+
+Conditions:
+  HasWebhook: !Not [!Equals [!Ref WebhookUrl, ""]]
+
+Resources:
+  # Holds ONE public file: the customer-facing CloudFormation template. AWS's
+  # one-click "Create stack" link only accepts a template stored in S3.
+  TemplateBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref TemplateBucketName
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: false
+        RestrictPublicBuckets: false
+
+  TemplateBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref TemplateBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: PublicReadOfTheConnectTemplateOnly
+            Effect: Allow
+            Principal: "*"
+            Action: s3:GetObject
+            Resource: !Sub "arn:aws:s3:::${TemplateBucket}/connect/*"
+
+  # Customers' stacks publish here (their account, our topic), so the policy
+  # must let any account publish. Safe by construction: the app verifies the SNS
+  # signature, accepts only this topic, and trusts nothing in a message until it
+  # has actually assumed the role (see src/server/aws-connect.ts).
+  ConnectTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: ops-free-connect
+
+  ConnectTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics:
+        - !Ref ConnectTopic
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: CustomerStacksMayPublish
+            Effect: Allow
+            Principal:
+              AWS: "*"
+            Action: sns:Publish
+            Resource: !Ref ConnectTopic
+
+  ConnectSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: HasWebhook
+    Properties:
+      TopicArn: !Ref ConnectTopic
+      Protocol: https
+      Endpoint: !Ref WebhookUrl
+
+  # The identity customers' roles trust. Its access key goes to Vercel and the
+  # worker as PLATFORM_AWS_*. It can do exactly one thing: assume roles named
+  # OpsFreeSES-* in other accounts (and only with the right ExternalId).
+  PlatformUser:
+    Type: AWS::IAM::User
+    Properties:
+      UserName: ops-free-platform
+      Policies:
+        - PolicyName: AssumeCustomerRolesOnly
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: sts:AssumeRole
+                Resource: "arn:aws:iam::*:role/OpsFreeSES-*"
+
+Outputs:
+  PLATFORM_AWS_PRINCIPAL_ARN:
+    Description: Set as PLATFORM_AWS_PRINCIPAL_ARN (Vercel and the worker).
+    Value: !GetAtt PlatformUser.Arn
+  AWS_CONNECT_TOPIC_ARN:
+    Description: Set as AWS_CONNECT_TOPIC_ARN (Vercel and the worker).
+    Value: !Ref ConnectTopic
+  AWS_CONNECT_TEMPLATE_URL:
+    Description: Set as AWS_CONNECT_TEMPLATE_URL. Upload the template to this exact key.
+    Value: !Sub "https://${TemplateBucket}.s3.${AWS::Region}.amazonaws.com/connect/opsfree-connect.yaml"

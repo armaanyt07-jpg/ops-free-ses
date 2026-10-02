@@ -9,6 +9,7 @@ import {
 } from "@aws-sdk/client-sesv2";
 import { CreateTopicCommand, SNSClient, SubscribeCommand } from "@aws-sdk/client-sns";
 
+import { awsCredentialsFor } from "@/lib/aws/credentials";
 import { createSesClient, type SesCredentials } from "@/lib/ses/client";
 
 /**
@@ -34,10 +35,7 @@ export const EVENT_DESTINATION_NAME = "ops-free-sns";
 function createSnsClient(credentials: SesCredentials): SNSClient {
   return new SNSClient({
     region: credentials.region,
-    credentials: {
-      accessKeyId: credentials.accessKeyId,
-      secretAccessKey: credentials.secretAccessKey,
-    },
+    credentials: awsCredentialsFor(credentials),
     maxAttempts: 3,
   });
 }

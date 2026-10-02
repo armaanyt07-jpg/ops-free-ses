@@ -35,7 +35,12 @@
  * Phase 6 adds `sandbox_requests` — the sandbox-exit assistant's draft and
  * its human-review record.
  *
- * No baseline column is renamed, retyped or dropped.
+ * Phase 10 (one-click AWS connect) loosens two baseline columns, on purpose and
+ * visibly: `aws_credentials.access_key_id` and `.secret_access_key_ciphertext`
+ * become nullable, because a role credential holds no secret. A CHECK keeps
+ * the two credential shapes exclusive. It also adds `aws_connections`.
+ *
+ * No baseline column is renamed or dropped.
  */
 import {
   pgTable,
@@ -49,9 +54,26 @@ import {
   jsonb,
   uniqueIndex,
   index,
+  check,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 export const environmentEnum = pgEnum("environment", ["staging", "production"]);
+
+/**
+ * How the platform authenticates to a customer's AWS account (Phase 10):
+ * `access_key` is an IAM user's long-lived key pair the customer pasted in;
+ * `role` is an IAM role created by the one-click CloudFormation stack that the
+ * platform assumes with short-lived credentials, so no secret is stored.
+ */
+export const credentialKindEnum = pgEnum("credential_kind", ["access_key", "role"]);
+
+export const awsConnectionStatusEnum = pgEnum("aws_connection_status", [
+  "pending",
+  "connected",
+  "failed",
+  "expired",
+]);
 
 export const domainStatusEnum = pgEnum("domain_status", [
   "pending",
@@ -90,8 +112,13 @@ export const awsCredentials = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     environment: environmentEnum("environment").notNull(),
-    accessKeyId: varchar("access_key_id", { length: 128 }).notNull(),
-    secretAccessKeyCiphertext: text("secret_access_key_ciphertext").notNull(),
+    // Nullable since Phase 10: a `role` credential holds no secret. The
+    // `aws_credentials_kind_shape` CHECK keeps the two shapes exclusive.
+    accessKeyId: varchar("access_key_id", { length: 128 }),
+    secretAccessKeyCiphertext: text("secret_access_key_ciphertext"),
+    kind: credentialKindEnum("kind").default("access_key").notNull(),
+    roleArn: varchar("role_arn", { length: 2048 }),
+    externalId: varchar("external_id", { length: 128 }),
     awsRegion: varchar("aws_region", { length: 32 }).notNull(),
     sesMaxSendRate: integer("ses_max_send_rate"),
     active: boolean("active").default(true).notNull(),
@@ -103,7 +130,44 @@ export const awsCredentials = pgTable(
     // so the AWS screen can show it without an AWS call per page view.
     accountSnapshot: jsonb("account_snapshot"),
   },
-  (t) => [uniqueIndex("aws_credentials_user_env").on(t.userId, t.environment)],
+  (t) => [
+    uniqueIndex("aws_credentials_user_env").on(t.userId, t.environment),
+    check(
+      "aws_credentials_kind_shape",
+      sql`(${t.kind} = 'access_key' AND ${t.accessKeyId} IS NOT NULL AND ${t.secretAccessKeyCiphertext} IS NOT NULL AND ${t.roleArn} IS NULL)
+        OR (${t.kind} = 'role' AND ${t.roleArn} IS NOT NULL AND ${t.externalId} IS NOT NULL AND ${t.accessKeyId} IS NULL AND ${t.secretAccessKeyCiphertext} IS NULL)`,
+    ),
+  ],
+);
+
+/**
+ * A one-click "Connect AWS" attempt (Phase 10). Created when the customer
+ * presses the button; carries the `ExternalId` baked into the CloudFormation
+ * role's trust policy. The stack's callback fills `role_arn`; the dashboard
+ * then verifies it by actually assuming the role and, on success, writes the
+ * `aws_credentials` row. The `external_id` is generated here, never by the
+ * customer (it is what stops a confused-deputy attack).
+ */
+export const awsConnections = pgTable(
+  "aws_connections",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    environment: environmentEnum("environment").notNull(),
+    externalId: varchar("external_id", { length: 128 }).notNull(),
+    awsRegion: varchar("aws_region", { length: 32 }).notNull(),
+    status: awsConnectionStatusEnum("status").default("pending").notNull(),
+    roleArn: varchar("role_arn", { length: 2048 }),
+    /** Why a connection failed, in words the customer can act on. */
+    error: text("error"),
+    /** When the callback arrived; verification retries run from here. */
+    callbackAt: timestamp("callback_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  },
+  (t) => [uniqueIndex("aws_connections_external_id").on(t.externalId)],
 );
 
 export const verifiedDomains = pgTable(
@@ -456,6 +520,7 @@ export type DomainStatus = (typeof domainStatusEnum.enumValues)[number];
 
 export type User = typeof users.$inferSelect;
 export type AwsCredential = typeof awsCredentials.$inferSelect;
+export type AwsConnection = typeof awsConnections.$inferSelect;
 export type ApiKey = typeof apiKeys.$inferSelect;
 export type EmailLog = typeof emailLogs.$inferSelect;
 export type VerifiedDomain = typeof verifiedDomains.$inferSelect;

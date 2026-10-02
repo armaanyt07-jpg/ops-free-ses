@@ -9,7 +9,7 @@ import { NextResponse, type NextRequest } from "next/server";
  * server action and route handler independently re-establishes the caller's
  * identity and enforces tenant ownership (SRS §9).
  */
-const PUBLIC_PATHS = ["/login", "/signup", "/forgot-password", "/auth", "/guide", "/pricing", "/terms", "/privacy"];
+const PUBLIC_PATHS = ["/login", "/signup", "/forgot-password", "/auth", "/guide", "/pricing", "/terms", "/privacy", "/aws-connect.yaml"];
 
 function isPublicPath(pathname: string): boolean {
   return (

@@ -5,8 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { GREEN } from "@/components/dashboard/badge-tones";
 import { cn } from "@/lib/utils";
-import { CredentialForm } from "@/components/dashboard/credential-form";
-import { IamSetup } from "@/components/dashboard/iam-setup";
+import { AwsConnectOptions } from "@/components/dashboard/aws-connect-options";
 import { Fields, PageHeader, Time } from "@/components/dashboard/primitives";
 import { ProductionAccessCard } from "@/components/dashboard/production-access-card";
 import { RevalidateButton } from "@/components/dashboard/revalidate-button";
@@ -74,9 +73,16 @@ function CredentialCard({ credential }: { credential: CredentialSummary }) {
         <div className="grid gap-6 md:grid-cols-2">
           <Fields
             items={[
-              ["Access key ID", <span key="k" className="font-mono text-xs">{credential.accessKeyId}</span>],
+              credential.kind === "role"
+                ? ["Connected via", <span key="k" className="font-mono text-xs break-all">IAM role · {credential.roleArn}</span>]
+                : ["Access key ID", <span key="k" className="font-mono text-xs">{credential.accessKeyId}</span>],
               ["Region", credential.awsRegion],
-              ["Secret", <span key="s" className="text-muted-foreground">stored encrypted · never shown</span>],
+              [
+                "Secret",
+                <span key="s" className="text-muted-foreground">
+                  {credential.kind === "role" ? "none stored · short-lived sessions only" : "stored encrypted · never shown"}
+                </span>,
+              ],
               [
                 "Enforcement",
                 account?.enforcementStatus ? (
@@ -168,15 +174,14 @@ export default async function AwsPage() {
           <CardTitle>{current ? "Replace the credential" : "Connect your AWS account"}</CardTitle>
           <CardDescription>
             {current
-              ? "Saving a new key replaces the current one — that is how rotation works."
-              : "Three steps in the AWS console, then paste the key here."}{" "}
-            The policy below also lets us set up delivery events and, if your DNS is in Route 53,
-            publish your domain&apos;s records for you.
+              ? "Connecting again replaces the current credential — that is how rotation works."
+              : "Connect with one click, or with an access key."}{" "}
+            Either way we can set up delivery events and, if your DNS is in Route 53, publish your
+            domain&apos;s records for you.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
-          <IamSetup />
-          <CredentialForm />
+        <CardContent>
+          <AwsConnectOptions />
         </CardContent>
       </Card>
 

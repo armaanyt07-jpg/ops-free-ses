@@ -32,7 +32,12 @@ import {
 export interface CredentialSummary {
   id: string;
   environment: Environment;
-  accessKeyId: string;
+  /** Null for a role credential: no key pair is stored. */
+  accessKeyId: string | null;
+  /** How we reach the customer's AWS account (Phase 10). */
+  kind: "access_key" | "role";
+  /** The role we assume, for `kind: "role"`. Not a secret. */
+  roleArn: string | null;
   awsRegion: string;
   sesMaxSendRate: number | null;
   active: boolean;
@@ -120,9 +125,12 @@ export async function reencryptAllCredentials(): Promise<{ total: number; rotate
   let failed = 0;
 
   for (const row of rows) {
+    // A role credential stores no secret, so there is nothing to re-encrypt.
+    const ciphertext = row.secretAccessKeyCiphertext;
+    if (ciphertext === null) continue;
     const aad = { userId: row.userId, environment: row.environment };
     try {
-      const { plaintext, keyIndex } = decryptWithKeyring(row.secretAccessKeyCiphertext, keys, aad);
+      const { plaintext, keyIndex } = decryptWithKeyring(ciphertext, keys, aad);
       if (keyIndex === 0) continue;
       const updated = await db
         .update(awsCredentials)
@@ -130,7 +138,7 @@ export async function reencryptAllCredentials(): Promise<{ total: number; rotate
         .where(
           and(
             eq(awsCredentials.id, row.id),
-            eq(awsCredentials.secretAccessKeyCiphertext, row.secretAccessKeyCiphertext),
+            eq(awsCredentials.secretAccessKeyCiphertext, ciphertext),
           ),
         )
         .returning({ id: awsCredentials.id });
@@ -148,6 +156,8 @@ function toSummary(row: typeof awsCredentials.$inferSelect): CredentialSummary {
     id: row.id,
     environment: row.environment,
     accessKeyId: row.accessKeyId,
+    kind: row.kind,
+    roleArn: row.roleArn,
     awsRegion: row.awsRegion,
     sesMaxSendRate: row.sesMaxSendRate,
     active: row.active,
@@ -192,6 +202,7 @@ export async function storeCredential(
     .values({
       userId: input.userId,
       environment: input.environment,
+      kind: "access_key",
       accessKeyId: input.accessKeyId,
       secretAccessKeyCiphertext: ciphertext,
       awsRegion: input.awsRegion,
@@ -206,6 +217,11 @@ export async function storeCredential(
     .onConflictDoUpdate({
       target: [awsCredentials.userId, awsCredentials.environment],
       set: {
+        // Switching from a role to keys must clear the role columns, or the
+        // `aws_credentials_kind_shape` CHECK refuses the row.
+        kind: "access_key",
+        roleArn: null,
+        externalId: null,
         accessKeyId: input.accessKeyId,
         secretAccessKeyCiphertext: ciphertext,
         awsRegion: input.awsRegion,
@@ -221,6 +237,76 @@ export async function storeCredential(
   if (!row) throw new Error("Failed to persist AWS credential");
 
   return { credential: toSummary(row), account };
+}
+
+export interface StoreRoleCredentialInput {
+  userId: string;
+  environment: Environment;
+  roleArn: string;
+  externalId: string;
+  awsRegion: string;
+}
+
+/**
+ * Stores a role credential after proving it works: the role is actually
+ * assumed and `GetAccount` is called through it (Phase 10). Nothing secret is
+ * written, because there is nothing secret to keep. As with access keys,
+ * submitting again replaces the stored credential.
+ *
+ * A failure from AWS is thrown unchanged so the caller can tell "the role does
+ * not exist yet" (retry) from "the role refuses us" (fail).
+ */
+export async function storeRoleCredential(
+  input: StoreRoleCredentialInput,
+): Promise<{ credential: CredentialSummary; account: SesAccountSnapshot }> {
+  const candidate: SesCredentials = {
+    roleArn: input.roleArn,
+    externalId: input.externalId,
+    region: input.awsRegion,
+    sessionName: `opsfree-${input.userId.slice(0, 8)}`,
+  };
+
+  const account = await describeSesAccount(candidate);
+  const maxRate = account.maxSendRate === null ? null : Math.floor(account.maxSendRate);
+
+  const db = getDb();
+  const values = {
+    kind: "role" as const,
+    roleArn: input.roleArn,
+    externalId: input.externalId,
+    accessKeyId: null,
+    secretAccessKeyCiphertext: null,
+    awsRegion: input.awsRegion,
+    sesMaxSendRate: maxRate,
+    active: true,
+    lastValidatedAt: new Date(),
+    accountSnapshot: account,
+  };
+  const [row] = await db
+    .insert(awsCredentials)
+    .values({ userId: input.userId, environment: input.environment, ...values })
+    .onConflictDoUpdate({
+      target: [awsCredentials.userId, awsCredentials.environment],
+      set: values,
+    })
+    .returning();
+
+  if (!row) throw new Error("Failed to persist AWS role credential");
+  return { credential: toSummary(row), account };
+}
+
+/**
+ * Deactivates a role credential whose stack was deleted in the customer's
+ * account. Matched by external id, so a credential since replaced by a newer
+ * connection is left alone.
+ */
+export async function deactivateRoleCredentialByExternalId(externalId: string): Promise<number> {
+  const rows = await getDb()
+    .update(awsCredentials)
+    .set({ active: false })
+    .where(and(eq(awsCredentials.kind, "role"), eq(awsCredentials.externalId, externalId)))
+    .returning({ id: awsCredentials.id });
+  return rows.length;
 }
 
 export async function listCredentials(
@@ -300,10 +386,28 @@ export async function loadSesCredentials(
 
   if (!row) return null;
 
+  return credentialsFromRow(row);
+}
+
+/** Rebuilds what an AWS client needs from a stored row: decrypt keys, or name the role. */
+function credentialsFromRow(row: typeof awsCredentials.$inferSelect): SesCredentials {
+  if (row.kind === "role") {
+    if (!row.roleArn || !row.externalId) throw new Error("Role credential is missing its role or external id");
+    return {
+      roleArn: row.roleArn,
+      externalId: row.externalId,
+      region: row.awsRegion,
+      sessionName: `opsfree-${row.userId.slice(0, 8)}`,
+    };
+  }
+
+  if (!row.accessKeyId || !row.secretAccessKeyCiphertext) {
+    throw new Error("Access-key credential is missing its key pair");
+  }
   const { plaintext: secretAccessKey } = decryptWithKeyring(
     row.secretAccessKeyCiphertext,
     keyring(),
-    { userId, environment },
+    { userId: row.userId, environment: row.environment },
   );
 
   return {
@@ -344,18 +448,8 @@ export async function loadDeliveryCredential(
 
   if (!row) return null;
 
-  const { plaintext: secretAccessKey } = decryptWithKeyring(
-    row.secretAccessKeyCiphertext,
-    keyring(),
-    { userId, environment },
-  );
-
   return {
-    credentials: {
-      accessKeyId: row.accessKeyId,
-      secretAccessKey,
-      region: row.awsRegion,
-    },
+    credentials: credentialsFromRow(row),
     maxSendRate: row.sesMaxSendRate,
   };
 }

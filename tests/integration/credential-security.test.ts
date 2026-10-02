@@ -95,7 +95,7 @@ describe("master key rotation", () => {
     await store();
     const [row] = await getDb().select().from(awsCredentials).where(eq(awsCredentials.userId, userId));
     expect(row!.secretAccessKeyCiphertext).not.toContain(SECRET);
-    expect(Buffer.from(row!.secretAccessKeyCiphertext, "base64").toString("latin1")).not.toContain(SECRET);
+    expect(Buffer.from(row!.secretAccessKeyCiphertext!, "base64").toString("latin1")).not.toContain(SECRET);
   });
 });
 

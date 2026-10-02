@@ -10,6 +10,8 @@ import {
   type SendEmailCommandOutput,
 } from "@aws-sdk/client-sesv2";
 
+import { awsCredentialsFor } from "@/lib/aws/credentials";
+
 /**
  * AWS SES access, using the customer's own credentials (SRS §2: the delivery
  * plane stays in the customer's AWS account).
@@ -18,11 +20,30 @@ import {
  * never cached, so a revoked or rotated key takes effect on the next send
  * rather than living on in a warm Lambda.
  */
-export interface SesCredentials {
+export interface KeyCredentials {
   accessKeyId: string;
   secretAccessKey: string;
   region: string;
+  roleArn?: undefined;
 }
+
+/**
+ * A customer-side IAM role the platform assumes (Phase 10, one-click connect).
+ * No secret is stored: `awsCredentialsFor` exchanges the platform's own
+ * identity for short-lived credentials, proving the `externalId` the role's
+ * trust policy demands.
+ */
+export interface RoleCredentials {
+  roleArn: string;
+  externalId: string;
+  region: string;
+  /** Shows up in the customer's CloudTrail so they can tell who acted. */
+  sessionName: string;
+  accessKeyId?: undefined;
+  secretAccessKey?: undefined;
+}
+
+export type SesCredentials = KeyCredentials | RoleCredentials;
 
 export interface SesAccountSnapshot {
   /** False while the account is still in the SES sandbox. */
@@ -45,10 +66,7 @@ export interface SesAccountSnapshot {
 export function createSesClient(credentials: SesCredentials): SESv2Client {
   return new SESv2Client({
     region: credentials.region,
-    credentials: {
-      accessKeyId: credentials.accessKeyId,
-      secretAccessKey: credentials.secretAccessKey,
-    },
+    credentials: awsCredentialsFor(credentials),
     maxAttempts: 3,
   });
 }

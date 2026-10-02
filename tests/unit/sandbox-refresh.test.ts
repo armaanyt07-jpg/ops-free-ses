@@ -36,6 +36,8 @@ const credential = (over: Partial<CredentialSummary> = {}): CredentialSummary =>
   id: "c1",
   environment: "production",
   accessKeyId: "AKIA…",
+  kind: "access_key",
+  roleArn: null,
   awsRegion: "ap-south-1",
   sesMaxSendRate: 1,
   active: true,

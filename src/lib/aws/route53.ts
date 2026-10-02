@@ -7,6 +7,7 @@ import {
 } from "@aws-sdk/client-route-53";
 
 import { dkimRecordName, dkimRecordTarget } from "@/lib/dns/checks";
+import { awsCredentialsFor } from "@/lib/aws/credentials";
 import type { SesCredentials } from "@/lib/ses/client";
 
 /**
@@ -48,10 +49,7 @@ export async function publishDkimRecords(
   // Route 53 is a global service; its API lives in us-east-1.
   const client = new Route53Client({
     region: "us-east-1",
-    credentials: {
-      accessKeyId: credentials.accessKeyId,
-      secretAccessKey: credentials.secretAccessKey,
-    },
+    credentials: awsCredentialsFor(credentials),
     maxAttempts: 2,
   });
 

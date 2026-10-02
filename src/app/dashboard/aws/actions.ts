@@ -12,6 +12,8 @@ import {
   setCredentialActive,
   storeCredential,
 } from "@/server/credentials";
+import { SES_REGION_IDS } from "@/lib/aws/regions";
+import { ConnectError, checkConnection, startConnection, type ConnectionState } from "@/server/aws-connect";
 import { DASHBOARD_ENVIRONMENT } from "@/server/environment";
 import { requireTenant } from "@/server/tenant";
 
@@ -137,4 +139,38 @@ export async function revalidate(_prev: RevalidateState): Promise<RevalidateStat
   revalidatePath("/dashboard/aws");
   revalidatePath("/dashboard");
   return { ok: true };
+}
+
+export type StartConnectResult = { ok: true; connectionId: string; url: string } | { ok: false; error: string };
+
+/**
+ * Begins a one-click connection: mints the ExternalId and returns the AWS
+ * console link that creates the role. The tenant comes from the session, never
+ * from the form.
+ */
+export async function startAwsConnect(awsRegion: string): Promise<StartConnectResult> {
+  const tenant = await requireTenant();
+  if (!SES_REGION_IDS.includes(awsRegion)) return { ok: false, error: "Choose one of the listed regions." };
+
+  try {
+    const started = await startConnection(tenant.id, DASHBOARD_ENVIRONMENT, awsRegion);
+    return { ok: true, ...started };
+  } catch (error) {
+    if (error instanceof ConnectError) return { ok: false, error: error.message };
+    return { ok: false, error: "Could not start the connection. Try again shortly." };
+  }
+}
+
+/** Polled by the connect button until the role is proven or the attempt fails. */
+export async function pollAwsConnect(connectionId: string): Promise<ConnectionState> {
+  const tenant = await requireTenant();
+  const id = z.string().uuid().safeParse(connectionId);
+  if (!id.success) return { state: "failed", message: "That connection attempt was not found. Start again." };
+
+  const state = await checkConnection(tenant.id, id.data);
+  if (state.state === "connected") {
+    revalidatePath("/dashboard/aws");
+    revalidatePath("/dashboard");
+  }
+  return state;
 }
