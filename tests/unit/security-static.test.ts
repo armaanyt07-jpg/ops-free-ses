@@ -68,6 +68,9 @@ describe("API routes authenticate", () => {
     // Public by design: the customer-facing CloudFormation template, so it can be read first.
     "src/app/aws-connect.yaml/route.ts": /buildConnectTemplate\(\)/,
     "src/app/auth/signout/route.ts": /request\.nextUrl\.origin/,
+    // Starts Google sign-in. Creates no session and takes no credentials; `next` is
+    // restricted to same-site paths, so it is not an open redirect.
+    "src/app/auth/google/route.ts": /signInWithOAuth\([\s\S]*googleRedirectTo\(/,
     // Authenticated by the one-time token in the emailed link; `next` is
     // restricted to same-site paths so the route is not an open redirect.
     "src/app/auth/confirm/route.ts": /safeNextPath\([\s\S]*exchangeCodeForSession\(/,
@@ -114,9 +117,12 @@ describe("secrets stay on the server", () => {
     // Each is public by design: the Supabase URL and anon key (RLS guards the
     // data), the Sentry DSN (it can submit events, never read them), and the
     // Turnstile site key (it only identifies the widget; verification needs the
-    // secret key, which lives in the Supabase dashboard and never in this app).
+    // secret key, which lives in the Supabase dashboard and never in this app),
+    // and the Google sign-in switch (a boolean; the Google client secret lives
+    // in the Supabase dashboard too).
     const used = new Set(files.flatMap((f) => [...read(f).matchAll(/NEXT_PUBLIC_[A-Z_]+/g)].map((m) => m[0])));
     expect([...used].sort()).toEqual([
+      "NEXT_PUBLIC_GOOGLE_SIGNIN",
       "NEXT_PUBLIC_SENTRY_DSN",
       "NEXT_PUBLIC_SUPABASE_ANON_KEY",
       "NEXT_PUBLIC_SUPABASE_URL",

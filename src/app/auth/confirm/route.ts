@@ -24,6 +24,16 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const tokenHash = searchParams.get("token_hash");
   const type = searchParams.get("type") as EmailOtpType | null;
 
+  // The provider answered with an error (e.g. the visitor cancelled at Google),
+  // so there is no code to exchange. Say so, rather than "link expired".
+  if (searchParams.get("error") && !code && !tokenHash) {
+    log.warn({ event: "auth.oauth_denied", requestId: "auth", errorCode: searchParams.get("error_code") ?? "access_denied" });
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    url.search = "?link=oauth";
+    return NextResponse.redirect(url);
+  }
+
   const supabase = await createClient();
   let error: { status?: number | undefined; code?: string | undefined; name: string } | null = null;
 

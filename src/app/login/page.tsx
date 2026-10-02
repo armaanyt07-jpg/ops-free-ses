@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { AuthForm } from "@/components/auth/auth-form";
 import { AuthShell } from "@/components/auth/auth-shell";
+import { GoogleSignIn } from "@/components/auth/google-button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { signIn } from "./actions";
 
@@ -23,6 +24,14 @@ export default async function LoginPage({
           </AlertDescription>
         </Alert>
       ) : null}
+      {link === "oauth" ? (
+        <Alert>
+          <AlertDescription>
+            Google sign-in didn&apos;t complete. Try again, or sign in with your email and password.
+          </AlertDescription>
+        </Alert>
+      ) : null}
+      <GoogleSignIn />
       <AuthForm action={signIn} submitLabel="Sign in" />
       <div className="text-muted-foreground flex flex-wrap justify-between gap-2 text-sm">
         <p>

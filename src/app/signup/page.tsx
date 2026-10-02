@@ -2,11 +2,13 @@ import Link from "next/link";
 
 import { AuthForm } from "@/components/auth/auth-form";
 import { AuthShell } from "@/components/auth/auth-shell";
+import { GoogleSignIn } from "@/components/auth/google-button";
 import { signUp } from "@/app/login/actions";
 
 export default function SignupPage() {
   return (
     <AuthShell title="Create an account" description="Bring your own AWS SES credentials.">
+      <GoogleSignIn />
       <AuthForm action={signUp} submitLabel="Create account" newAccount />
       <p className="text-muted-foreground text-xs">
         By creating an account you agree to our{" "}

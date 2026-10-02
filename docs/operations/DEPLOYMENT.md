@@ -109,3 +109,32 @@ against real AWS from a laptop (SNS cannot reach localhost). Once deployed:
 - A CI pipeline running the checks above on every push.
 - A log drain / alerting destination (`OBSERVABILITY.md`).
 - Enforcing CSP after a browser check (`security/AUDIT.md` F-06).
+
+## Google sign-in ("Continue with Google")
+
+A button on `/login` and `/signup`. The code is built and **inert until
+`NEXT_PUBLIC_GOOGLE_SIGNIN=true`**, because an unconfigured provider sends the
+visitor to a raw Supabase error page. The order matters: configure first, switch
+on last.
+
+1. **Google Cloud:** APIs & Services → Credentials → Create credentials → OAuth
+   client ID → *Web application*. Under **Authorized redirect URIs** add
+   Supabase's callback, shown in Supabase under Authentication → Sign In /
+   Providers → Google (it looks like `https://<project-ref>.supabase.co/auth/v1/callback`).
+   Configure the OAuth consent screen too (app name, support email, and your
+   `/terms` and `/privacy` links); publish it so people outside your own Google
+   account can sign in.
+2. **Supabase:** Authentication → Sign In / Providers → Google → enable it and
+   paste the client ID and client secret **there** (never into chat, a file or
+   `.env.example`).
+3. **Supabase:** Authentication → URL Configuration → add
+   `https://www.opsfree.in/auth/confirm` to **Redirect URLs**.
+4. **Vercel:** set `NEXT_PUBLIC_GOOGLE_SIGNIN=true` as a plain Config variable
+   and redeploy (it is inlined at build time).
+5. **Check** `/login` and `/signup` show the button, then sign in with a Google
+   account you have not used before. A first Google sign-in creates the tenant
+   row on arrival, the same as an email sign-up.
+
+Notes: CAPTCHA does not apply (Google is the check). A Google account whose
+email matches an existing password account is linked to it by Supabase.
+Cancelling at Google lands on `/login` with a plain message, not an error page.
