@@ -58,6 +58,12 @@ export function LandingNav({ signedIn = false }: { signedIn?: boolean }) {
           >
             Guide
           </Link>
+          <Link
+            href="/pricing"
+            className="text-muted-foreground hover:text-foreground hover:bg-muted rounded-md px-3 py-2 transition-colors"
+          >
+            Pricing
+          </Link>
         </nav>
 
         <div className="ml-auto hidden items-center gap-2 sm:flex">
@@ -115,6 +121,13 @@ export function LandingNav({ signedIn = false }: { signedIn?: boolean }) {
             >
               <BookOpen className="size-4" aria-hidden />
               Guide
+            </Link>
+            <Link
+              href="/pricing"
+              onClick={closeMobile}
+              className="hover:bg-muted block rounded-lg px-3 py-2.5 text-sm font-medium transition-colors"
+            >
+              Pricing
             </Link>
             <div className="flex flex-col gap-2 border-t pt-3">
               {signedIn ? (

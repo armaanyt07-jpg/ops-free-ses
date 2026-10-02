@@ -9,6 +9,7 @@ const COLUMNS = [
       { label: "Why Ops-Free", href: "/#problem" },
       { label: "How it works", href: "/#how-it-works" },
       { label: "API", href: "/#api" },
+      { label: "Pricing", href: "/pricing" },
       { label: "Guide", href: "/guide" },
       { label: "Dashboard", href: "/#dashboard" },
     ],
