@@ -79,7 +79,8 @@ You need these only once; customers never see them.
    **ap-south-1** (the topic's region is the region of every customer stack) →
    Create stack → upload `docs/operations/aws-connect-platform.yaml`. Give a
    globally unique bucket name; leave `WebhookUrl` empty. When it finishes, the
-   **Outputs** tab lists the three values you need.
+   **Outputs** tab lists the three values you need (`PlatformPrincipalArn`,
+   `ConnectTopicArn`, `ConnectTemplateUrl`; each description names the env var).
 2. **Create the platform access key.** IAM → Users → `ops-free-platform` →
    Security credentials → Create access key ("application running outside
    AWS"). Keep the secret out of chat and out of `.env.example`.

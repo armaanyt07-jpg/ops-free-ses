@@ -3,6 +3,9 @@
  * console link, CloudFormation's callback, the template, the platform config
  * and the role-assuming credential provider.
  */
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -198,6 +201,35 @@ describe("the CloudFormation template", () => {
     expect(yaml).not.toContain("undefined");
     expect(yaml).not.toMatch(/\$\{(?!ConnectionId\})[A-Z_]+\}/);
     expect(yaml.startsWith('AWSTemplateFormatVersion: "2010-09-09"')).toBe(true);
+  });
+});
+
+describe("CloudFormation naming rules", () => {
+  // CloudFormation rejects logical ids, parameter names and output names that
+  // are not plain letters and digits. Caught here, not in a customer's console.
+  const names = (yaml: string, section: string): string[] => {
+    const block = new RegExp(`^${section}:\\n((?:[ ]{2}.*\\n|\\n)+)`, "m").exec(yaml)?.[1] ?? "";
+    return [...block.matchAll(/^ {2}([^\s#][^:\n]*):/gm)].map((m) => m[1]!);
+  };
+  const platform = readFileSync(join(__dirname, "..", "..", "docs/operations/aws-connect-platform.yaml"), "utf8");
+  const customer = buildConnectTemplate();
+
+  it.each([
+    ["the customer template", customer],
+    ["the platform template", platform],
+  ])("%s uses only letters and digits for every name", (_label, yaml) => {
+    for (const section of ["Parameters", "Resources", "Outputs"]) {
+      const found = names(yaml, section);
+      expect(found.length, `${section} should list names`).toBeGreaterThan(0);
+      for (const name of found) expect(name, `${section}: ${name}`).toMatch(/^[A-Za-z0-9]+$/);
+    }
+  });
+
+  it("the platform template still outputs the three values the app needs", () => {
+    expect(names(platform, "Outputs").sort()).toEqual(["ConnectTemplateUrl", "ConnectTopicArn", "PlatformPrincipalArn"]);
+    for (const env of ["PLATFORM_AWS_PRINCIPAL_ARN", "AWS_CONNECT_TOPIC_ARN", "AWS_CONNECT_TEMPLATE_URL"]) {
+      expect(platform).toContain(env);
+    }
   });
 });
 

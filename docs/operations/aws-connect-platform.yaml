@@ -97,12 +97,14 @@ Resources:
                 Resource: "arn:aws:iam::*:role/OpsFreeSES-*"
 
 Outputs:
-  PLATFORM_AWS_PRINCIPAL_ARN:
-    Description: Set as PLATFORM_AWS_PRINCIPAL_ARN (Vercel and the worker).
+  # Output names must be plain letters and digits (no underscores), so each
+  # description names the environment variable the value is for.
+  PlatformPrincipalArn:
+    Description: "Value for PLATFORM_AWS_PRINCIPAL_ARN (Vercel and the worker)."
     Value: !GetAtt PlatformUser.Arn
-  AWS_CONNECT_TOPIC_ARN:
-    Description: Set as AWS_CONNECT_TOPIC_ARN (Vercel and the worker).
+  ConnectTopicArn:
+    Description: "Value for AWS_CONNECT_TOPIC_ARN (Vercel and the worker)."
     Value: !Ref ConnectTopic
-  AWS_CONNECT_TEMPLATE_URL:
-    Description: Set as AWS_CONNECT_TEMPLATE_URL. Upload the template to this exact key.
+  ConnectTemplateUrl:
+    Description: "Value for AWS_CONNECT_TEMPLATE_URL. Upload the template to this exact key."
     Value: !Sub "https://${TemplateBucket}.s3.${AWS::Region}.amazonaws.com/connect/opsfree-connect.yaml"
