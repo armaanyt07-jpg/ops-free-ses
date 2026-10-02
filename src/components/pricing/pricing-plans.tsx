@@ -73,6 +73,15 @@ function PlanCard({ plan }: { plan: Plan }) {
 export function PricingPlans() {
   return (
     <div>
+      {!PAID_PLANS_OPEN ? (
+        <p className="bg-muted/40 mb-6 rounded-xl border px-5 py-3.5 text-sm leading-relaxed">
+          <span className="font-semibold">For now, everything is free.</span>{" "}
+          <span className="text-muted-foreground">
+            There are no limits during the beta. These are the plans we&apos;re planning for when paid plans open.
+          </span>
+        </p>
+      ) : null}
+
       <div className="grid gap-5 lg:grid-cols-3">
         {PLANS.map((p) => (
           <PlanCard key={p.id} plan={p} />

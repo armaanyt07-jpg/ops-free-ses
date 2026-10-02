@@ -47,6 +47,10 @@ describe("while billing does not exist", () => {
     expect(PAID_PLANS_OPEN).toBe(false);
   });
 
+  it("the plans say everything is free for now, since no limit is enforced", () => {
+    expect(read("src/components/pricing/pricing-plans.tsx")).toContain("For now, everything is free.");
+  });
+
   it("the Terms still say the beta is free", () => {
     expect(read("src/app/terms/page.tsx")).toMatch(/During the beta the service is free/);
   });
