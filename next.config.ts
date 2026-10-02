@@ -36,14 +36,18 @@ const nextConfig: NextConfig = {
     // The browser SDK posts errors straight to Sentry's ingest host.
     const sentryDsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
     const sentryOrigin = sentryDsn ? ` ${new URL(sentryDsn).origin}` : "";
+    // Bot-protection widget on the auth forms (src/lib/auth/captcha.ts).
+    const turnstile = "https://challenges.cloudflare.com";
     const csp = [
       "default-src 'self'",
-      `script-src 'self' 'unsafe-inline'${production ? "" : " 'unsafe-eval'"}`,
+      `script-src 'self' 'unsafe-inline'${production ? "" : " 'unsafe-eval'"} ${turnstile}`,
       "style-src 'self' 'unsafe-inline'",
       // Template previews render the customer's own HTML, which may load images.
       "img-src 'self' data: https:",
       "font-src 'self'",
-      `connect-src 'self'${sentryOrigin}`,
+      `connect-src 'self'${sentryOrigin} ${turnstile}`,
+      // The Turnstile challenge runs in an iframe from Cloudflare.
+      `frame-src ${turnstile}`,
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self'",

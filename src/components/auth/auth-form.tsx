@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -8,13 +8,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { AuthFormState } from "@/app/login/actions";
+import { TurnstileField } from "@/components/auth/turnstile-field";
+import { formNeedsCaptcha, turnstileSiteKey } from "@/lib/auth/captcha";
 
-function SubmitButton({ label }: { label: string }) {
+function SubmitButton({ label, waiting }: { label: string; /** Waiting for the human check to finish. */ waiting: boolean }) {
   const { pending } = useFormStatus();
 
   return (
-    <Button type="submit" className="w-full" disabled={pending}>
-      {pending ? "Working…" : label}
+    <Button type="submit" className="w-full" disabled={pending || waiting}>
+      {pending ? "Working…" : waiting ? "Checking…" : label}
     </Button>
   );
 }
@@ -45,6 +47,9 @@ export function AuthForm({
     action,
     {},
   );
+  // Bot protection (Cloudflare Turnstile): inert unless a site key is set.
+  const protectedForm = Boolean(turnstileSiteKey()) && formNeedsCaptcha(fields);
+  const [captchaToken, setCaptchaToken] = useState("");
 
   return (
     <form action={formAction} className="space-y-4">
@@ -114,7 +119,14 @@ export function AuthForm({
         </Alert>
       ) : null}
 
-      <SubmitButton label={submitLabel} />
+      {formNeedsCaptcha(fields) ? (
+        <>
+          <input type="hidden" name="captchaToken" value={captchaToken} />
+          <TurnstileField onToken={setCaptchaToken} resetSignal={state} />
+        </>
+      ) : null}
+
+      <SubmitButton label={submitLabel} waiting={protectedForm && !captchaToken} />
     </form>
   );
 }

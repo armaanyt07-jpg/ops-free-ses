@@ -25,6 +25,7 @@ password.
 | `WORKER_CONCURRENCY` | — | optional (5) | the SES rate is enforced separately |
 | `RATE_LIMIT_*` | optional | — | defaults in `.env.example` |
 | `NEXT_PUBLIC_SENTRY_DSN` | optional | — | error monitoring; plain type, needs a fresh build — see OBSERVABILITY |
+| `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | optional | — | Cloudflare Turnstile site key (public). Plain Config type, needs a fresh build; see "Bot protection" below |
 | `SENTRY_DSN` | — | optional | the same DSN, for the worker |
 | `PUBLIC_APP_URL` | optional | — | Phase 8: base URL "Connect events" subscribes to SNS; defaults to the request host |
 
@@ -53,6 +54,27 @@ password.
      Suppressions.
 7. **Re-run** `npm run load-test -- --url https://<app>` with a dedicated
    API key, and record the results in `docs/testing/EVIDENCE.md`.
+
+## Bot protection (Cloudflare Turnstile)
+
+Sign-up is open to anyone and each attempt can send an email, so the auth forms
+carry a Turnstile check. **The order matters**: once CAPTCHA is on in Supabase,
+it requires a token on sign-up, sign-in *and* password reset, so enabling it
+before the code and site key are live locks everyone out, including you.
+
+1. **Cloudflare:** Turnstile → add a widget for `www.opsfree.in` (add
+   `localhost` to test locally). Note the site key and the secret key.
+2. **Deploy the code** (inert without a site key).
+3. **Vercel:** set `NEXT_PUBLIC_TURNSTILE_SITE_KEY` as a plain Config variable,
+   then deploy again (it's inlined at build time).
+4. **Check** the widget appears on `/signup`, `/login` and `/forgot-password`.
+5. **Supabase:** Authentication → Bot and Abuse Protection → enable CAPTCHA,
+   choose Turnstile, paste the **secret** key, save. The secret key lives only
+   here.
+6. **Test** sign-up, sign-in and a password reset on the live site.
+
+To switch it off in an emergency, disable CAPTCHA in Supabase first; the site key
+can stay. Setting a new password from the emailed link is not CAPTCHA-protected.
 
 ## Releases
 

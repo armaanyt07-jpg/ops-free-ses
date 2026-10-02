@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { log } from "@/lib/api/logger";
+import { CAPTCHA_FAILED_MESSAGE, isCaptchaError, readCaptchaToken } from "@/lib/auth/captcha";
 import { createClient } from "@/lib/supabase/server";
 import { appOrigin } from "@/server/public-url";
 
@@ -44,10 +45,17 @@ export async function signIn(
     return { error: "Enter a valid email address and password." };
   }
 
+  const captcha = readCaptchaToken(formData);
+  if (!captcha.ok) return { error: captcha.error };
+
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword(parsed.data);
+  const { error } = await supabase.auth.signInWithPassword({
+    ...parsed.data,
+    ...(captcha.token ? { options: { captchaToken: captcha.token } } : {}),
+  });
 
   if (error) {
+    if (isCaptchaError(error)) return { error: CAPTCHA_FAILED_MESSAGE };
     // The user sees one generic message; the cause goes to the server log.
     log.warn({
       event: "auth.signin_failed",
@@ -76,13 +84,20 @@ export async function signUp(
     return { error: first?.message ?? "Check the details you entered." };
   }
 
+  const captcha = readCaptchaToken(formData);
+  if (!captcha.ok) return { error: captcha.error };
+
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signUp({
     ...parsed.data,
-    options: { emailRedirectTo: await confirmUrl("/dashboard") },
+    options: {
+      emailRedirectTo: await confirmUrl("/dashboard"),
+      ...(captcha.token ? { captchaToken: captcha.token } : {}),
+    },
   });
 
   if (error) {
+    if (isCaptchaError(error)) return { error: CAPTCHA_FAILED_MESSAGE };
     log.warn({
       event: "auth.signup_failed",
       requestId: "auth",
@@ -118,12 +133,17 @@ export async function requestPasswordReset(
     return { error: "Enter a valid email address." };
   }
 
+  const captcha = readCaptchaToken(formData);
+  if (!captcha.ok) return { error: captcha.error };
+
   const supabase = await createClient();
   const { error } = await supabase.auth.resetPasswordForEmail(parsed.data, {
     redirectTo: await confirmUrl("/reset-password"),
+    ...(captcha.token ? { captchaToken: captcha.token } : {}),
   });
 
   if (error) {
+    if (isCaptchaError(error)) return { error: CAPTCHA_FAILED_MESSAGE };
     log.warn({
       event: "auth.reset_request_failed",
       requestId: "auth",
