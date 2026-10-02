@@ -38,7 +38,8 @@ wait=132ms credential=2160ms suppression=537ms limiter=… marking=… ses=… r
 `wait` is how long the job sat in Redis before this worker took it; the rest
 are the worker's steps in order. A large `credential` or `suppression` points at
 database round trips, a large `ses` at the AWS call. Production currently shows
-about 5 s in total; see `docs/PHASE-3.md` §10.1. Some log viewers truncate
+about 1.5 s in total (it was 5 s until the worker moved next to the database);
+see `docs/PHASE-3.md` §10.1. Some log viewers truncate
 `detail`; expand the row or download the logs to see all of it.
 
 ## Error monitoring

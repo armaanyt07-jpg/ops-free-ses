@@ -479,15 +479,21 @@ Either way, re-measure in the deployed environment before claiming the SRS §5
 
 ### 10.1 Production finding (2026-10-02): every send takes about 5 seconds
 
-> [!WARNING]
-> **Known issue — deferred.** In production, an email takes **about 5 seconds
-> from `queued` to `sent`** (the moment Amazon SES accepts it). The API answers
-> `202` as soon as the job is queued, before the worker runs, so callers are not
-> blocked; the delay is in the background worker. It is consistent, loses no mail, and was
-> **deliberately postponed until there are real users** (decision, 2026-10-02).
+> [!NOTE]
+> **Resolved (2026-10-02): about 5 s → about 1.4 s.** The cause was geography:
+> the worker was on Railway **US West** while Supabase and Upstash are in
+> Mumbai, so every database and Redis hop cost ~250 ms (a parameterized query
+> is two hops). The worker DB keepalive removed the ~1.6 s reconnect (5.2 s →
+> 3.6 s), and moving the worker to Railway **Southeast Asia (Singapore)**, the
+> nearest Railway region to Mumbai, brought a send to 1.45 s
+> (`wait=85 credential=278 suppression=155 limiter=78 marking=163 ses=563
+> record=212` ms). The text below records the original investigation; it said
+> the worker was in Singapore, which it was not. Remaining ideas (cache the
+> decrypted credential, prepared statements for the worker) would save
+> well under half a second and are not worth doing now.
 
 **Measured** on the deployed system (Vercel `bom1`, worker on Railway
-Singapore, Supabase `ap-south-1`), from `sent_at - queued_at` in `email_logs`:
+US West (not Singapore, as first assumed), Supabase `ap-south-1`), from `sent_at - queued_at` in `email_logs`:
 
 | Sent (UTC) | queued → sent |
 | --- | --- |

@@ -9,7 +9,7 @@ password.
 | Piece | Where | Why |
 | --- | --- | --- |
 | Next.js app (API, dashboard, webhook) | **Vercel**, region closest to the database (Supabase is `ap-south-1` → Vercel `bom1`) | serverless fits request/response; co-location cuts every DB round trip from ~25 ms to ~1 ms |
-| Worker | **Railway / Fly.io / Render / ECS** via `Dockerfile.worker`, same region | long-lived process; must not be serverless |
+| Worker | **Railway / Fly.io / Render / ECS** via `Dockerfile.worker`, **nearest region to the database** (Supabase `ap-south-1`, Mumbai → Railway Southeast Asia / Singapore; a US-region worker made every send ~5 s) | long-lived process; must not be serverless |
 | PostgreSQL | Supabase (existing project) | — |
 | Redis | **Upstash**, same region, `rediss://` (TLS) URL | BullMQ needs the Redis protocol, not the REST URL |
 
