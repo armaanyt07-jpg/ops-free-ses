@@ -181,7 +181,7 @@ export default async function AwsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <AwsConnectOptions />
+          <AwsConnectOptions email={tenant.email} />
         </CardContent>
       </Card>
 

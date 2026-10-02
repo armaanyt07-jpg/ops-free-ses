@@ -97,7 +97,11 @@ You need these only once; customers never see them.
    `https://<your-domain>/api/v1/webhooks/aws-connect`. The app confirms the
    subscription by itself (look for `sns.subscription_confirmed` with
    `detail: aws-connect` in the logs).
-7. **Try it** with a throwaway AWS account if you have one: Dashboard → AWS →
+7. **Preview it before anyone else can.** Also set `AWS_CONNECT_PREVIEW_EMAILS`
+   to your own sign-in email. While it is set, only those accounts see the
+   button, and the server refuses everyone else's attempts to start one.
+   Remove it (and redeploy) to open the feature to all users.
+8. **Try it** (with a throwaway AWS account if you have one; your own works too): Dashboard → AWS →
    Connect AWS → Create stack → the page should flip to Connected within a
    minute. Then send an email.
 

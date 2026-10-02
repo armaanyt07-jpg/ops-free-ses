@@ -66,7 +66,7 @@ describe("connect options", () => {
   it("without the platform configured, shows only the access-key steps", async () => {
     for (const k of Object.keys(ENV)) delete process.env[k];
     const { AwsConnectOptions } = await import("@/components/dashboard/aws-connect-options");
-    const out = await html(createElement(AwsConnectOptions));
+    const out = await html(createElement(AwsConnectOptions, { email: "dev@example.test" }));
     expect(out).toContain("Access key ID");
     expect(out).toContain("ses:CreateConfigurationSet");
     expect(out).not.toContain("Connect AWS");
@@ -76,7 +76,7 @@ describe("connect options", () => {
   it("with it configured, leads with one click and keeps access keys under Advanced", async () => {
     Object.assign(process.env, ENV);
     const { AwsConnectOptions } = await import("@/components/dashboard/aws-connect-options");
-    const out = await html(createElement(AwsConnectOptions));
+    const out = await html(createElement(AwsConnectOptions, { email: "dev@example.test" }));
     expect(out).toContain("Connect AWS");
     expect(out).toContain("Region you send from");
     expect(out).toContain("Asia Pacific (Mumbai)");
@@ -88,11 +88,27 @@ describe("connect options", () => {
     expect(out).not.toContain(ENV.PLATFORM_AWS_ACCESS_KEY_ID);
   });
 
+  it("hides the button from accounts outside the preview list", async () => {
+    Object.assign(process.env, ENV);
+    process.env.AWS_CONNECT_PREVIEW_EMAILS = "someone-else@example.test";
+    try {
+      const { AwsConnectOptions } = await import("@/components/dashboard/aws-connect-options");
+      const hidden = await html(createElement(AwsConnectOptions, { email: "dev@example.test" }));
+      expect(hidden).not.toContain("Connect AWS");
+      expect(hidden).toContain("Access key ID");
+
+      process.env.AWS_CONNECT_PREVIEW_EMAILS = "dev@example.test";
+      expect(await html(createElement(AwsConnectOptions, { email: "dev@example.test" }))).toContain("Connect AWS");
+    } finally {
+      delete process.env.AWS_CONNECT_PREVIEW_EMAILS;
+    }
+  });
+
   it("hides the button, rather than breaking the page, when only half is configured", async () => {
     Object.assign(process.env, ENV);
     delete process.env.AWS_CONNECT_TOPIC_ARN;
     const { AwsConnectOptions } = await import("@/components/dashboard/aws-connect-options");
-    const out = await html(createElement(AwsConnectOptions));
+    const out = await html(createElement(AwsConnectOptions, { email: "dev@example.test" }));
     expect(out).not.toContain("Connect AWS");
     expect(out).toContain("Access key ID");
   });

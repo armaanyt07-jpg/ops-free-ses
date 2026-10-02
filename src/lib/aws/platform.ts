@@ -75,10 +75,31 @@ export function platformAws(env: Record<string, string | undefined> = process.en
   };
 }
 
-/** Whether the dashboard should offer the one-click button. */
-export function oneClickConnectAvailable(env: Record<string, string | undefined> = process.env): boolean {
+/**
+ * Optional preview gate: while `AWS_CONNECT_PREVIEW_EMAILS` (comma-separated)
+ * is set, only those accounts are offered, or allowed to start, a one-click
+ * connection. Unset it to open the feature to everyone. Lets the flow be tried
+ * on production with real AWS before anyone else can see the button.
+ */
+export function oneClickAllowedFor(
+  email: string | null | undefined,
+  env: Record<string, string | undefined> = process.env,
+): boolean {
+  const list = (env.AWS_CONNECT_PREVIEW_EMAILS ?? "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+  if (list.length === 0) return true;
+  return Boolean(email) && list.includes(email!.trim().toLowerCase());
+}
+
+/** Whether the dashboard should offer the one-click button to this account. */
+export function oneClickConnectAvailable(
+  email: string | null | undefined,
+  env: Record<string, string | undefined> = process.env,
+): boolean {
   try {
-    return platformAws(env) !== null;
+    return platformAws(env) !== null && oneClickAllowedFor(email, env);
   } catch {
     // Half-configured: hide the button rather than break the page. The error
     // surfaces in the logs the first time anything tries to use it.

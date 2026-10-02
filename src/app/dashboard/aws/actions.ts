@@ -153,7 +153,7 @@ export async function startAwsConnect(awsRegion: string): Promise<StartConnectRe
   if (!SES_REGION_IDS.includes(awsRegion)) return { ok: false, error: "Choose one of the listed regions." };
 
   try {
-    const started = await startConnection(tenant.id, DASHBOARD_ENVIRONMENT, awsRegion);
+    const started = await startConnection(tenant.id, DASHBOARD_ENVIRONMENT, awsRegion, tenant.email);
     return { ok: true, ...started };
   } catch (error) {
     if (error instanceof ConnectError) return { ok: false, error: error.message };

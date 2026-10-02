@@ -132,6 +132,7 @@ export default async function OverviewPage({
         eventsConnected={eventsConnected}
         appUrl={endpoint.url.slice(0, -WEBHOOK_PATH.length)}
         local={endpoint.local}
+        email={tenant.email}
       />
     );
   }

@@ -8,8 +8,8 @@ import { oneClickConnectAvailable } from "@/lib/aws/platform";
  * with access keys tucked under "Advanced"; otherwise just the access-key steps,
  * exactly as before Phase 10.
  */
-export function AwsConnectOptions() {
-  if (!oneClickConnectAvailable()) {
+export function AwsConnectOptions({ email }: { email: string | null | undefined }) {
+  if (!oneClickConnectAvailable(email)) {
     return (
       <div className="space-y-6">
         <IamSetup />

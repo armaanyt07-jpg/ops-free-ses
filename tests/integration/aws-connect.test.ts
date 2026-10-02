@@ -99,6 +99,17 @@ describe("starting", () => {
     await expect(startConnection(otherUserId, "production", "ap-south-1")).resolves.toBeTruthy();
   });
 
+  it("refuses an account outside the preview list, and allows one on it", async () => {
+    process.env.AWS_CONNECT_PREVIEW_EMAILS = "owner@example.test";
+    try {
+      await expect(startConnection(userId, "production", "ap-south-1", "friend@example.test")).rejects.toBeInstanceOf(ConnectError);
+      await expect(startConnection(userId, "production", "ap-south-1")).rejects.toBeInstanceOf(ConnectError);
+      await expect(startConnection(userId, "production", "ap-south-1", "Owner@Example.test")).resolves.toBeTruthy();
+    } finally {
+      delete process.env.AWS_CONNECT_PREVIEW_EMAILS;
+    }
+  });
+
   it("is unavailable when the platform isn't configured", async () => {
     for (const k of Object.keys(ENV)) delete process.env[k];
     await expect(startConnection(userId, "production", "ap-south-1")).rejects.toBeInstanceOf(ConnectError);

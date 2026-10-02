@@ -25,7 +25,7 @@ import {
   type AssumeFn,
 } from "@/lib/aws/credentials";
 import { EVENTS_ACTIONS, REQUIRED_ACTIONS, ROUTE53_ACTIONS } from "@/lib/aws/iam-policy";
-import { PlatformAwsConfigError, oneClickConnectAvailable, platformAws } from "@/lib/aws/platform";
+import { PlatformAwsConfigError, oneClickAllowedFor, oneClickConnectAvailable, platformAws } from "@/lib/aws/platform";
 
 const FULL_ENV = {
   PLATFORM_AWS_ACCESS_KEY_ID: "AKIAPLATFORMEXAMPLE1",
@@ -204,14 +204,14 @@ describe("the CloudFormation template", () => {
 describe("platform configuration", () => {
   it("is off when nothing is set", () => {
     expect(platformAws({})).toBeNull();
-    expect(oneClickConnectAvailable({})).toBe(false);
+    expect(oneClickConnectAvailable("you@example.com", {})).toBe(false);
   });
 
   it("derives the region and account from the topic", () => {
     const p = platformAws(FULL_ENV)!;
     expect(p.region).toBe("ap-south-1");
     expect(p.accountId).toBe("111122223333");
-    expect(oneClickConnectAvailable(FULL_ENV)).toBe(true);
+    expect(oneClickConnectAvailable("you@example.com", FULL_ENV)).toBe(true);
   });
 
   it("refuses a half-configured platform, naming fields but never values", () => {
@@ -225,7 +225,7 @@ describe("platform configuration", () => {
       expect(text).not.toContain(FULL_ENV.PLATFORM_AWS_SECRET_ACCESS_KEY);
     }
     // ...and hides the button instead of breaking the page.
-    expect(oneClickConnectAvailable(partial)).toBe(false);
+    expect(oneClickConnectAvailable("you@example.com", partial)).toBe(false);
   });
 
   it.each([
@@ -235,6 +235,32 @@ describe("platform configuration", () => {
     ["PLATFORM_AWS_PRINCIPAL_ARN", "arn:aws:iam::111122223333:root"],
   ])("rejects a bad %s", (key, value) => {
     expect(() => platformAws({ ...FULL_ENV, [key]: value })).toThrow(PlatformAwsConfigError);
+  });
+});
+
+describe("the preview gate", () => {
+  it("is open to everyone when no list is set", () => {
+    expect(oneClickAllowedFor("anyone@example.com", {})).toBe(true);
+    expect(oneClickAllowedFor(null, { AWS_CONNECT_PREVIEW_EMAILS: "" })).toBe(true);
+  });
+
+  it("limits the feature to the listed accounts, ignoring case and spacing", () => {
+    const env = { AWS_CONNECT_PREVIEW_EMAILS: " Me@Example.com , other@example.com " };
+    expect(oneClickAllowedFor("me@example.com", env)).toBe(true);
+    expect(oneClickAllowedFor("OTHER@example.com", env)).toBe(true);
+    expect(oneClickAllowedFor("friend@example.com", env)).toBe(false);
+  });
+
+  it("shows nothing to a signed-out or unknown account while the list is set", () => {
+    expect(oneClickAllowedFor(null, { AWS_CONNECT_PREVIEW_EMAILS: "me@example.com" })).toBe(false);
+    expect(oneClickAllowedFor(undefined, { AWS_CONNECT_PREVIEW_EMAILS: "me@example.com" })).toBe(false);
+  });
+
+  it("hides the button from everyone else even when the platform is configured", () => {
+    const env = { ...FULL_ENV, AWS_CONNECT_PREVIEW_EMAILS: "me@example.com" };
+    expect(oneClickConnectAvailable("me@example.com", env)).toBe(true);
+    expect(oneClickConnectAvailable("friend@example.com", env)).toBe(false);
+    expect(oneClickConnectAvailable("friend@example.com", FULL_ENV)).toBe(true);
   });
 });
 

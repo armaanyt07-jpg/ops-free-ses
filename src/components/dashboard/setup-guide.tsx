@@ -33,6 +33,8 @@ export interface SetupGuideProps {
   eventsConnected: boolean;
   appUrl: string;
   local: boolean;
+  /** The signed-in account, for the one-click connect preview gate. */
+  email: string;
 }
 
 type StepState = "done" | "current" | "locked";
@@ -101,6 +103,7 @@ export function SetupGuide({
   eventsConnected,
   appUrl,
   local,
+  email,
 }: SetupGuideProps) {
   const verified = domains.find((d) => d.status === "verified");
   const pending = domains.find((d) => d.status !== "verified");
@@ -169,7 +172,7 @@ export function SetupGuide({
                   : "Emails are sent from your own Amazon SES account. Connect it to get started."
               }
             >
-              {connected ? null : <AwsConnectOptions />}
+              {connected ? null : <AwsConnectOptions email={email} />}
             </Step>
 
             <Step

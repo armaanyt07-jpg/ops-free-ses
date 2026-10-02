@@ -13,7 +13,7 @@ import {
   quickCreateUrl,
   type CustomResourceRequest,
 } from "@/lib/aws/connect";
-import { PlatformAwsConfigError, platformAws } from "@/lib/aws/platform";
+import { PlatformAwsConfigError, oneClickAllowedFor, platformAws } from "@/lib/aws/platform";
 import { deactivateRoleCredentialByExternalId, storeRoleCredential } from "@/server/credentials";
 
 /**
@@ -47,9 +47,14 @@ export async function startConnection(
   userId: string,
   environment: Environment,
   awsRegion: string,
+  email: string | null = null,
 ): Promise<{ connectionId: string; url: string }> {
   const platform = platformAws();
-  if (!platform) throw new ConnectError("One-click connect is not available on this server.");
+  if (!platform || !oneClickAllowedFor(email)) {
+    // Same answer whether it is off or still in preview: the button is hidden
+    // either way, so this only fires for a hand-crafted request.
+    throw new ConnectError("One-click connect is not available on this account yet.");
+  }
 
   const db = getDb();
   const [counted] = await db
