@@ -1,6 +1,4 @@
 import Link from "next/link";
-import { AlertTriangle, CheckCircle2 } from "lucide-react";
-
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,10 +8,14 @@ import { cn } from "@/lib/utils";
 import { CredentialForm } from "@/components/dashboard/credential-form";
 import { IamSetup } from "@/components/dashboard/iam-setup";
 import { Fields, PageHeader, Time } from "@/components/dashboard/primitives";
+import { ProductionAccessCard } from "@/components/dashboard/production-access-card";
 import { RevalidateButton } from "@/components/dashboard/revalidate-button";
+import { describeAccess } from "@/lib/sandbox/access-state";
 import { formatCount } from "@/lib/dashboard/format";
 import { listCredentials, type CredentialSummary } from "@/server/credentials";
 import { getActiveEnvironment } from "@/server/environment";
+import { getSandboxRequest } from "@/server/sandbox";
+import { withFreshSandboxStatus } from "@/server/sandbox-refresh";
 import { requireTenant } from "@/server/tenant";
 
 import { removeCredential, toggleCredential } from "./actions";
@@ -69,29 +71,6 @@ function CredentialCard({ credential }: { credential: CredentialSummary }) {
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
-        {account ? (
-          account.productionAccessEnabled ? (
-            <p className="flex items-center gap-2 text-sm">
-              <CheckCircle2 className="size-4 text-emerald-700" aria-hidden />
-              Approved to send to any recipient.
-            </p>
-          ) : (
-            <Alert>
-              <AlertTriangle className="size-4" aria-hidden />
-              <AlertTitle>SES sandbox</AlertTitle>
-              <AlertDescription>
-                This account can only send to addresses verified in SES (and to SES&apos;s
-                mailbox simulator). Use “Start sending to anyone” to request access before sending
-                to real users.
-              </AlertDescription>
-            </Alert>
-          )
-        ) : (
-          <p className="text-muted-foreground text-sm">
-            No account snapshot yet — re-validate to fetch quota and sandbox state.
-          </p>
-        )}
-
         <div className="grid gap-6 md:grid-cols-2">
           <Fields
             items={[
@@ -156,7 +135,13 @@ export default async function AwsPage() {
     getActiveEnvironment(tenant.id),
     listCredentials(tenant.id),
   ]);
-  const current = credentials.find((c) => c.environment === environment);
+  const listed = credentials.find((c) => c.environment === environment);
+  const current = await withFreshSandboxStatus(tenant.id, environment, listed);
+  const sandboxRow = current ? await getSandboxRequest(tenant.id, environment) : null;
+  const access = describeAccess(current?.account ?? null, {
+    connected: Boolean(current?.active),
+    prepared: Boolean(sandboxRow?.reviewedAt),
+  });
 
   return (
     <div className="space-y-8">
@@ -164,6 +149,8 @@ export default async function AwsPage() {
         title="AWS"
         description="Your own SES account does the sending. The credential is validated against AWS before it is saved."
       />
+
+      {current?.active ? <ProductionAccessCard view={access} /> : null}
 
       {current ? (
         <CredentialCard credential={current} />

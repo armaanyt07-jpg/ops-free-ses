@@ -9,10 +9,16 @@ import { RevalidateButton } from "@/components/dashboard/revalidate-button";
 import { SandboxQuestionnaire } from "@/components/dashboard/sandbox-questionnaire";
 import { CopyButton } from "@/components/dashboard/copy-button";
 import { ReviewForm } from "@/components/dashboard/sandbox-review";
+import { ProductionAccessCard } from "@/components/dashboard/production-access-card";
+import { ReadinessChecklist } from "@/components/dashboard/readiness-checklist";
 import { formatDateTime } from "@/lib/dashboard/format";
+import { describeAccess } from "@/lib/sandbox/access-state";
+import { readinessItems } from "@/lib/sandbox/readiness";
+import { searchActivity } from "@/server/activity";
 import { listCredentials } from "@/server/credentials";
 import { getActiveEnvironment } from "@/server/environment";
 import { buildRequest, collectFacts, getSandboxRequest, isReviewed, readDraft } from "@/server/sandbox";
+import { withFreshSandboxStatus } from "@/server/sandbox-refresh";
 import { requireTenant } from "@/server/tenant";
 
 export const dynamic = "force-dynamic";
@@ -39,18 +45,29 @@ export default async function SandboxPage() {
   const tenant = await requireTenant();
   const environment = await getActiveEnvironment(tenant.id);
 
-  const [credentials, row, facts, built] = await Promise.all([
+  const [credentials, row, facts, built, activity] = await Promise.all([
     listCredentials(tenant.id),
     getSandboxRequest(tenant.id, environment),
     collectFacts(tenant.id, environment),
     buildRequest(tenant.id, environment),
+    searchActivity(tenant.id, environment, {}, 1, 1),
   ]);
 
-  const credential = credentials.find((c) => c.environment === environment);
+  const credential = await withFreshSandboxStatus(
+    tenant.id,
+    environment,
+    credentials.find((c) => c.environment === environment),
+  );
   const account = credential?.account ?? null;
   const draft = readDraft(row);
   const reviewed = built.ok && isReviewed(row, built.hash);
   const region = built.ok ? built.request.region : (draft.region ?? credential?.awsRegion ?? "");
+  const access = describeAccess(account, { connected: Boolean(credential?.active), prepared: Boolean(row?.reviewedAt) });
+  // Advisory only: nothing here gates the review step.
+  const readiness = readinessItems({ draft, facts, hasSent: activity.total > 0 });
+  // Only while there's a request to prepare: not while AWS is reviewing one
+  // (it can't be edited then) and not once access is granted.
+  const showReadiness = ["not_requested", "denied", "failed", "unknown"].includes(access.state);
 
   return (
     <div className="space-y-8">
@@ -58,6 +75,8 @@ export default async function SandboxPage() {
         title="Start sending to anyone"
         description="Prepare the request that takes your SES account out of the sandbox. You answer; the assistant only arranges your answers. You review, then submit it in AWS yourself."
       />
+
+      {credential?.active ? <ProductionAccessCard view={access} /> : null}
 
       <Card>
         <CardHeader>
@@ -119,7 +138,7 @@ export default async function SandboxPage() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card id="questionnaire">
         <CardHeader>
           <CardTitle>Questionnaire</CardTitle>
           <CardDescription>Saved as a draft at each step. Leave anything blank rather than guess — blank answers are left out, never filled in.</CardDescription>
@@ -128,6 +147,8 @@ export default async function SandboxPage() {
           <SandboxQuestionnaire initial={draft} facts={facts} defaultRegion={credential?.awsRegion ?? null} />
         </CardContent>
       </Card>
+
+      {showReadiness ? <ReadinessChecklist items={readiness} /> : null}
 
       <Card id="request">
         <CardHeader>

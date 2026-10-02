@@ -22,6 +22,7 @@ starts.
 | 6 | AWS sandbox exit assistant | **Code complete** — see [`docs/PHASE-6.md`](docs/PHASE-6.md). Browser check pending |
 | 7 | Production hardening | **Complete** — see [`docs/PHASE-7.md`](docs/PHASE-7.md). Evidence: [`docs/testing/EVIDENCE.md`](docs/testing/EVIDENCE.md) |
 | 8 | Guided onboarding & setup automation | **Complete** — see [`docs/PHASE-8.md`](docs/PHASE-8.md). Deployed at www.opsfree.in; Route 53 automation untested |
+| 9 | Sandbox and "waiting for AWS" experience | **Code complete** — see [`docs/PHASE-9.md`](docs/PHASE-9.md). Not yet seen signed in on the live dashboard |
 
 > [!WARNING]
 > **Known issue: sends take about 5 seconds from `queued` to `sent` in production.**

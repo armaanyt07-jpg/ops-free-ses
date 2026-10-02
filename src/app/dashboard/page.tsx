@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConnectEventsButton } from "@/components/dashboard/setup-actions";
 import { SetupGuide } from "@/components/dashboard/setup-guide";
+import { ProductionAccessCard } from "@/components/dashboard/production-access-card";
 import { StatusBadge } from "@/components/dashboard/status-badge";
 import { TestSendForm } from "@/components/dashboard/test-send-form";
 import { VolumeChart } from "@/components/dashboard/volume-chart";
@@ -19,6 +20,7 @@ import {
 import { formatCount, formatRate } from "@/lib/dashboard/format";
 import { cn } from "@/lib/utils";
 import { hintFor } from "@/lib/dashboard/error-hints";
+import { describeAccess, inSandbox } from "@/lib/sandbox/access-state";
 import { dayValue, parseWindow, type SearchParams } from "@/lib/dashboard/params";
 import { reputationLevel, THRESHOLDS, type ReputationLevel } from "@/lib/dashboard/reputation";
 import {
@@ -33,6 +35,8 @@ import { listCredentials } from "@/server/credentials";
 import { listDomains } from "@/server/domains";
 import { refreshPendingEmailIdentities } from "@/server/email-identities";
 import { getActiveEnvironment } from "@/server/environment";
+import { getSandboxRequest } from "@/server/sandbox";
+import { withFreshSandboxStatus } from "@/server/sandbox-refresh";
 import { WEBHOOK_PATH, webhookEndpoint } from "@/server/public-url";
 import { getQueueHealth } from "@/server/queue-health";
 import { listTopics } from "@/server/sns-topics";
@@ -89,7 +93,13 @@ export default async function OverviewPage({
       refreshPendingEmailIdentities(tenant.id),
     ]);
 
-  const credential = credentials.find((c) => c.environment === environment && c.active);
+  // Phase 9: re-ask AWS about the sandbox when the snapshot is stale (cooldown,
+  // timeout and failures handled inside), so "waiting for AWS" is current.
+  const credential = await withFreshSandboxStatus(
+    tenant.id,
+    environment,
+    credentials.find((c) => c.environment === environment && c.active),
+  );
   const envDomains = domains.filter((d) => d.environment === environment);
   const envEmails = emails.filter((e) => e.environment === environment);
   // A verified domain or a verified address: either lets SES send.
@@ -125,6 +135,11 @@ export default async function OverviewPage({
       />
     );
   }
+
+  const sandboxRow = credential ? await getSandboxRequest(tenant.id, environment) : null;
+  const access = credential
+    ? describeAccess(credential.account, { connected: true, prepared: Boolean(sandboxRow?.reviewedAt) })
+    : null;
 
   // Tiles open Activity filtered to the same window, so the list a tile opens
   // is the list the tile counted (to day granularity).
@@ -166,6 +181,8 @@ export default async function OverviewPage({
           />
         }
       />
+
+      {access && inSandbox(access.state) ? <ProductionAccessCard view={access} compact /> : null}
 
       {!credential || verifiedDomains === 0 || activeKeys === 0 ? (
         <Alert>
