@@ -403,26 +403,31 @@ got 503. No test ran after it until now.
 - [x] Worker boots consuming both `ses-send` and `domain-verification`
 - [x] All temporary tenants removed; the live database is left clean
 
-### Not verified — needs an AWS credential
+### Verified against real AWS (2026-10-01 and 2026-10-02)
 
-- [ ] `CreateEmailIdentity` / `GetEmailIdentity` against real SES
-- [ ] A **genuine AWS-signed** SNS message verifying end to end. The canonical
-      string was checked against AWS's documentation by hand, and the only
-      current AWS certificate found was expired, so this is the most important
-      item to confirm.
-- [ ] A real SubscriptionConfirmation being confirmed
-- [ ] Real bounce / complaint / delivery notifications
-- [ ] That SES sends events to a *published* HTTPS endpoint (needs deployment)
+Run against the deployed app (www.opsfree.in) and the owner's AWS account
+(`ap-south-1`, SES sandbox), read back from the production database:
 
-The SES mailbox simulator makes the last three easy once a credential exists:
-send to `bounce@simulator.amazonses.com`, `complaint@…`, `success@…`.
+- [x] **Real SNS subscription confirmed.** "Connect events" created the topic
+      `ops-free-ses-events`; the webhook accepted the genuine
+      `SubscriptionConfirmation` (2026-10-01).
+- [x] **Genuine AWS-signed messages verify end to end.** The signature path,
+      which had only been checked against AWS's documentation and an expired
+      certificate, accepted real Delivery, Bounce and Complaint notifications.
+- [x] **Real bounce / complaint / delivery processing**, via the mailbox
+      simulator (`bounce@`, `complaint@`, `success@simulator.amazonses.com`):
+      each event linked to its `email_logs` row and moved its status.
+- [x] **SES sends events to the published HTTPS endpoint.**
+- [x] **`CreateEmailIdentity` / `GetEmailIdentity` against real SES**, for
+      both email identities (2026-09-30) and the domain `opsfree.in`
+      (2026-10-02: DKIM 3 of 3, SPF and DMARC passing, status verified).
+- [x] **Sending from the verified domain.** `hello@opsfree.in` to
+      `success@simulator.amazonses.com`: queued, sent, delivered, with the
+      Delivery event linked to the log row (2026-10-02).
 
-**Status as of 2026-09-27:** a real AWS credential is now stored (staging,
-`ap-south-1`, SES sandbox, 1 email/s). It validates live, and the IAM policy
-allows `GetAccount`, `SendEmail`, `CreateEmailIdentity` and `GetEmailIdentity`.
-The items above were **deliberately deferred by the project owner**: there is
-no domain to verify and no public endpoint for SNS yet. They remain the first
-things to run when either exists.
+Not yet verified: Route 53 DNS publishing (the owner's DNS is at GoDaddy, so
+the records were added by hand) and sending to an arbitrary recipient (the
+account is still in the SES sandbox).
 
 **One property is argued, not tested:** the advisory lock closing the
 webhook-vs-`markSent` interleaving (§2.5). PGlite is a single connection, so two

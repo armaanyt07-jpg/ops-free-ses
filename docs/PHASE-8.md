@@ -1,8 +1,10 @@
 # Phase 8 — Guided onboarding and setup automation
 
-Status: **code-complete; the AWS automation is unproven against real AWS**
-until the app is deployed (SNS cannot call localhost). 687 tests pass;
-migrations `0006`–`0008` are applied.
+Status: **code-complete. "Connect events" is proven against real AWS** since
+the app was deployed (2026-10-01: topic created, subscription confirmed, real
+Delivery / Bounce / Complaint events processed). Route 53 publishing is still
+unproven (the owner's DNS is at GoDaddy). 687 tests pass; migrations
+`0006`–`0008` are applied. See `PHASE-3.md` §9 for the live checks.
 
 ## Why
 
@@ -76,13 +78,10 @@ event format. AccessDenied names the missing permission.
 
 ## Honest limits
 
-- `CreateTopic`, `Subscribe`, configuration sets and Route 53 writes are
-  tested against mocked SDK clients only. The first real run is the
-  post-deployment checklist in `operations/DEPLOYMENT.md`.
-- Your stored `TESTSES` credential has only the original four SES
-  permissions. Until its policy is replaced, "Connect events" will stop at
-  `sns:CreateTopic` with a message saying so, and Route 53 publishing falls
-  back to manual.
+- `CreateTopic`, `Subscribe` and configuration sets were first tested against
+  mocked SDK clients, then confirmed against real AWS on 2026-10-01 (after
+  the `TESTSES` policy was widened). Route 53 writes are still mock-tested
+  only: no hosted zone has been available to try.
 - Playwright e2e specs were updated but not re-run (they sign in as your
   account); `environment-switcher.spec.ts` was deleted with the switcher.
 
