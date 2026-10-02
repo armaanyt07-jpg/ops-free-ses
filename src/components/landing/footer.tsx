@@ -6,10 +6,11 @@ const COLUMNS = [
   {
     title: "Product",
     links: [
-      { label: "Why Ops-Free", href: "#problem" },
-      { label: "How it works", href: "#how-it-works" },
-      { label: "API", href: "#api" },
-      { label: "Dashboard", href: "#dashboard" },
+      { label: "Why Ops-Free", href: "/#problem" },
+      { label: "How it works", href: "/#how-it-works" },
+      { label: "API", href: "/#api" },
+      { label: "Guide", href: "/guide" },
+      { label: "Dashboard", href: "/#dashboard" },
     ],
   },
   {

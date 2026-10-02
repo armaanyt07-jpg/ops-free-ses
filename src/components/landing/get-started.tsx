@@ -92,6 +92,12 @@ export function GetStarted() {
             <Button asChild className="mt-8">
               <Link href="/signup">Create an account</Link>
             </Button>
+            <p className="mt-4 text-sm">
+              <Link href="/guide" className="text-muted-foreground hover:text-foreground underline underline-offset-4">
+                Read the full walkthrough
+              </Link>
+              <span className="text-muted-foreground"> with every click spelled out.</span>
+            </p>
           </div>
 
           <ol className="space-y-0">

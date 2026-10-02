@@ -1,4 +1,5 @@
 import { CheckCircle2, Lock } from "lucide-react";
+import Link from "next/link";
 
 import { checkDomainNow } from "@/app/dashboard/domains/actions";
 import { CredentialForm } from "@/components/dashboard/credential-form";
@@ -43,6 +44,7 @@ function Step({
   state,
   summary,
   optional,
+  help,
   children,
 }: {
   n: number;
@@ -50,6 +52,8 @@ function Step({
   state: StepState;
   summary?: React.ReactNode;
   optional?: boolean;
+  /** Anchor in /guide that explains this step in full. */
+  help?: string;
   children?: React.ReactNode;
 }) {
   return (
@@ -74,6 +78,14 @@ function Step({
             </span>
           ) : null}
           {state === "locked" ? <Lock className="text-muted-foreground size-3.5" aria-label="Locked" /> : null}
+          {help && state !== "done" ? (
+            <Link
+              href={`/guide#${help}`}
+              className="text-muted-foreground hover:text-foreground ml-auto text-xs font-normal underline underline-offset-4"
+            >
+              Need help?
+            </Link>
+          ) : null}
         </h3>
         {summary ? <div className="text-muted-foreground mt-1 text-sm">{summary}</div> : null}
         {children ? <div className="mt-4">{children}</div> : null}
@@ -128,7 +140,11 @@ export function SetupGuide({
         <h1 className="text-2xl font-semibold tracking-tight">Let&apos;s get you sending</h1>
         <p className="text-muted-foreground max-w-2xl text-sm">
           Connect your AWS account, verify a domain, and send your first email. It takes a
-          few minutes; after that this page becomes your dashboard.
+          few minutes; after that this page becomes your dashboard.{" "}
+          <Link href="/guide" className="text-foreground underline underline-offset-4">
+            Read the full guide
+          </Link>{" "}
+          if you&apos;d like every step explained.
         </p>
         <div className="flex items-center gap-3 pt-1">
           <div className="bg-muted h-1.5 w-40 overflow-hidden rounded-full" aria-hidden>
@@ -144,6 +160,7 @@ export function SetupGuide({
             <Step
               n={1}
               title="Connect your AWS account"
+              help="step-aws"
               state={connected ? "done" : "current"}
               summary={
                 credential
@@ -164,6 +181,7 @@ export function SetupGuide({
             <Step
               n={2}
               title="Verify where your emails come from"
+              help="step-sender"
               state={canSend ? "done" : connected ? "current" : "locked"}
               summary={
                 verified
@@ -201,6 +219,7 @@ export function SetupGuide({
             <Step
               n={3}
               title="Create an API key"
+              help="step-key"
               state={hasKey ? "done" : connected ? "current" : "locked"}
             >
               {connected ? <QuickKeyStep done={hasKey} appUrl={appUrl} from={from} /> : null}
@@ -209,6 +228,7 @@ export function SetupGuide({
             <Step
               n={4}
               title="Send a test email"
+              help="step-test"
               state={canSend && hasKey ? "current" : "locked"}
               summary={
                 canSend
@@ -222,6 +242,7 @@ export function SetupGuide({
             <Step
               n={5}
               title="Track deliveries and bounces"
+              help="step-events"
               optional
               state={eventsConnected ? "done" : connected ? "current" : "locked"}
               summary={

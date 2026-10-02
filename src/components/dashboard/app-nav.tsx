@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import {
   Activity,
   AlertTriangle,
+  BookOpen,
   Cloud,
   FileCode2,
   Gauge,
@@ -73,6 +74,7 @@ const GROUPS: NavGroup[] = [
       { href: "/dashboard/api-keys", label: "API keys", icon: KeyRound },
       { href: "/dashboard/aws", label: "AWS", icon: Cloud },
       { href: "/dashboard/sandbox", label: "Start sending to anyone", icon: Rocket },
+      { href: "/guide", label: "Guide", icon: BookOpen },
     ],
   },
   {
