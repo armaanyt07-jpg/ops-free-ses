@@ -2,6 +2,7 @@ import { Queue, type JobsOptions } from "bullmq";
 
 import type { Environment } from "@/db/schema";
 import { createRedis } from "./connection";
+import { COMPLETED_JOB_RETENTION_HOURS, FAILED_JOB_RETENTION_DAYS } from "./retention";
 import { MAX_ATTEMPTS } from "./retry-policy";
 
 /**
@@ -51,10 +52,10 @@ export const DEFAULT_JOB_OPTIONS: JobsOptions = {
   backoff: { type: "ses" },
   // Completed jobs are pruned: the email log is the durable record, so keeping
   // them in Redis would duplicate state and grow without bound.
-  removeOnComplete: { count: 1_000, age: 24 * 3600 },
+  removeOnComplete: { count: 1_000, age: COMPLETED_JOB_RETENTION_HOURS * 3600 },
   // Failed jobs are NOT pruned aggressively — the failed set is the
   // dead-letter store (see docs/PHASE-2.md).
-  removeOnFail: { count: 10_000, age: 14 * 24 * 3600 },
+  removeOnFail: { count: 10_000, age: FAILED_JOB_RETENTION_DAYS * 24 * 3600 },
 };
 
 let queue: Queue<SendJobData> | undefined;

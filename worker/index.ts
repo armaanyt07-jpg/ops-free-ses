@@ -19,6 +19,7 @@ import { backoffDelayMs } from "@/lib/queue/retry-policy";
 import { SEND_QUEUE_NAME, type SendJobData } from "@/lib/queue/send-queue";
 
 import { processDomainJob } from "./domain-processor";
+import { startDbKeepalive } from "./db-keepalive";
 import { Heartbeat } from "./heartbeat";
 import { createSendProcessor } from "./processor";
 
@@ -148,6 +149,7 @@ domainWorker.on("error", (error) => {
 });
 
 heartbeat.start();
+const dbKeepalive = startDbKeepalive();
 
 log.info({
   event: "worker.started",
@@ -171,6 +173,7 @@ async function shutdown(signal: string): Promise<void> {
   log.info({ event: "worker.shutdown", requestId: "worker", detail: signal });
 
   try {
+    dbKeepalive.stop();
     await Promise.all([worker.close(), domainWorker.close()]);
     await heartbeat.stop();
     await connection.quit();
