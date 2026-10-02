@@ -8,6 +8,17 @@ export default function SignupPage() {
   return (
     <AuthShell title="Create an account" description="Bring your own AWS SES credentials.">
       <AuthForm action={signUp} submitLabel="Create account" newAccount />
+      <p className="text-muted-foreground text-xs">
+        By creating an account you agree to our{" "}
+        <Link href="/terms" className="underline underline-offset-4">
+          Terms of Service
+        </Link>{" "}
+        and{" "}
+        <Link href="/privacy" className="underline underline-offset-4">
+          Privacy Policy
+        </Link>
+        .
+      </p>
       <p className="text-muted-foreground text-sm">
         Already registered?{" "}
         <Link href="/login" className="underline underline-offset-4">

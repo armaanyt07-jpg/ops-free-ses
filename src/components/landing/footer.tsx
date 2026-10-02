@@ -14,6 +14,13 @@ const COLUMNS = [
     ],
   },
   {
+    title: "Legal",
+    links: [
+      { label: "Terms of Service", href: "/terms" },
+      { label: "Privacy Policy", href: "/privacy" },
+    ],
+  },
+  {
     title: "Account",
     links: [
       { label: "Sign in", href: "/login" },
@@ -35,7 +42,7 @@ export function LandingFooter() {
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-10 sm:gap-16">
+          <div className="grid grid-cols-2 gap-10 sm:grid-cols-3 sm:gap-16">
             {COLUMNS.map((col) => (
               <div key={col.title}>
                 <p className="text-xs font-semibold tracking-wide uppercase">{col.title}</p>
