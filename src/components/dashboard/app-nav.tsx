@@ -37,6 +37,8 @@ type NavItem = {
   exact?: boolean;
   /** Only shown once the account has sent something. */
   afterFirstSend?: boolean;
+  /** Setup help: hidden once the account has sent something. */
+  untilFirstSend?: boolean;
 };
 type NavGroup = {
   label: string | null;
@@ -74,7 +76,7 @@ const GROUPS: NavGroup[] = [
       { href: "/dashboard/api-keys", label: "API keys", icon: KeyRound },
       { href: "/dashboard/aws", label: "AWS", icon: Cloud },
       { href: "/dashboard/sandbox", label: "Start sending to anyone", icon: Rocket },
-      { href: "/guide", label: "Guide", icon: BookOpen },
+      { href: "/guide", label: "Guide", icon: BookOpen, untilFirstSend: true },
     ],
   },
   {
@@ -87,6 +89,19 @@ const GROUPS: NavGroup[] = [
     ],
   },
 ];
+
+/**
+ * Progressive disclosure: setup help (`untilFirstSend`) goes away once the
+ * account has sent, and day-to-day pages (`afterFirstSend`) appear. A page the
+ * user is already on always stays visible.
+ */
+export function navItemVisible(
+  item: Pick<NavItem, "afterFirstSend" | "untilFirstSend">,
+  hasSent: boolean,
+  active: boolean,
+): boolean {
+  return (hasSent ? !item.untilFirstSend : !item.afterFirstSend) || active;
+}
 
 function isActive(pathname: string, href: string, exact?: boolean) {
   return exact ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
@@ -125,7 +140,7 @@ function NavLinks({
   // Before the first send, show only what setup needs. A page the user is
   // already on stays visible so the active marker never disappears.
   const visible = (item: NavItem) =>
-    hasSent || !item.afterFirstSend || isActive(pathname, item.href, item.exact);
+    navItemVisible(item, hasSent, isActive(pathname, item.href, item.exact));
 
   return (
     <nav aria-label="Dashboard" className="space-y-5">
