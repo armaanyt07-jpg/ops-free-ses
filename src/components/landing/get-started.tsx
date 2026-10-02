@@ -80,7 +80,7 @@ export function GetStarted() {
     <section id="get-started" className="border-b">
       <div className="mx-auto max-w-6xl px-6 py-20 sm:py-28">
         <SectionKicker index="04" label="Get started" />
-        <div className="grid gap-14 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:items-start">
+        <div className="grid grid-cols-1 gap-14 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:items-start">
           <div className="lg:sticky lg:top-24">
             <h2 className="text-4xl font-semibold tracking-tight text-balance sm:text-[2.75rem]">
               From sign-up to first email.
