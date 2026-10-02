@@ -52,6 +52,18 @@ export function createSendProcessor({ redis }: ProcessorDeps): SendProcessor {
     const { logId, userId, environment, requestId } = job.data;
     const attempt = job.attemptsMade + 1;
 
+    // Where the time goes between "queued" and "sent". `wait` is how long the
+    // job sat in Redis before this worker took it (it spans the API's enqueue
+    // and the worker's pickup); the rest are the steps below, in order.
+    const startedAt = Date.now();
+    const timings: string[] = [`wait=${Math.max(0, (job.processedOn ?? startedAt) - job.timestamp)}ms`];
+    let lapAt = startedAt;
+    const lap = (step: string): void => {
+      const now = Date.now();
+      timings.push(`${step}=${now - lapAt}ms`);
+      lapAt = now;
+    };
+
     const base = {
       requestId,
       userId,
@@ -75,6 +87,7 @@ export function createSendProcessor({ redis }: ProcessorDeps): SendProcessor {
     let credential;
     try {
       credential = await loadDeliveryCredential(userId, environment);
+      lap("credential");
     } catch (error) {
       if (!(error instanceof DecryptionError)) throw error;
 
@@ -111,6 +124,7 @@ export function createSendProcessor({ redis }: ProcessorDeps): SendProcessor {
     // deferred by the gate re-runs this whole function, so the check is
     // repeated on every pass that could reach SES.
     const suppressed = await findSuppressed(userId, job.data.to);
+    lap("suppression");
     if (suppressed.length > 0) {
       await markSuppressed(logId, suppressed);
       log.info({
@@ -131,6 +145,7 @@ export function createSendProcessor({ redis }: ProcessorDeps): SendProcessor {
       environment,
       credential.maxSendRate,
     );
+    lap("limiter");
 
     if (!decision.allowed) {
       log.info({
@@ -148,6 +163,7 @@ export function createSendProcessor({ redis }: ProcessorDeps): SendProcessor {
     }
 
     await markSending(logId);
+    lap("marking");
 
     // Only the SES call is inside this try. A failure *after* SES accepted the
     // message is not an SES failure, and must never be retried as a send.
@@ -160,6 +176,7 @@ export function createSendProcessor({ redis }: ProcessorDeps): SendProcessor {
         html: job.data.html,
         text: job.data.text,
       });
+      lap("ses");
     } catch (error) {
       const classified = classifySesError(error);
       const isLastAttempt = attempt >= (job.opts.attempts ?? MAX_ATTEMPTS);
@@ -235,12 +252,15 @@ export function createSendProcessor({ redis }: ProcessorDeps): SendProcessor {
     // If this throws (database down), BullMQ retries; the retry takes the
     // acceptedBySes path above and does not call SES.
     await markSent(logId, { messageId: result.messageId, sesRequestId: result.requestId });
+    lap("record");
 
     log.info({
       event: "worker.sent",
       ...base,
       status: "sent",
       recipientCount: job.data.to.length,
+      durationMs: Date.now() - startedAt,
+      detail: timings.join(" "),
     });
 
     await reconcileAfterSend(userId, result.messageId);
