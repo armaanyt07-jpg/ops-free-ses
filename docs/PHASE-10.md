@@ -1,8 +1,11 @@
 # Phase 10 — One-click "Connect AWS"
 
-Status: **code-complete, tested against mocks; not yet proven against real AWS**
-(that needs the operator-side stack below, which only the owner can create).
-Access keys remain, as "Advanced".
+Status: **proven against real AWS on 2026-10-02** (operator stack created, template
+uploaded, topic subscribed, a stack created from the console link, callback
+received, role assumed and `GetAccount` read through it, dashboard showing the
+role). The test used ONE AWS account as both operator and customer; a second
+account, a real send through the role from the worker, and the stack-delete
+(revoke) path are still to be confirmed. Access keys remain, as "Advanced".
 
 ## Why
 
@@ -107,6 +110,16 @@ You need these only once; customers never see them.
    minute. Then send an email.
 
 Until step 3 the dashboard shows the access-key flow exactly as before.
+
+## Found on the first real run
+
+- CloudFormation rejects output names with underscores; the platform template's
+  outputs are now `PlatformPrincipalArn`, `ConnectTopicArn`, `ConnectTemplateUrl`
+  (a test now checks every name in both templates).
+- A half-set environment is a loud failure on purpose: the connect webhook
+  answers 500 and logs the missing variable names (never values). Probe a
+  deployment with an empty POST to `/api/v1/webhooks/aws-connect`: 404 = off,
+  400 = configured, 500 = half-configured.
 
 ## Not yet proven
 
