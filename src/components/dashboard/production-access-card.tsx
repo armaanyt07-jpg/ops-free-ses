@@ -24,11 +24,33 @@ export function ProductionAccessCard({
   compact = false,
 }: {
   view: AccessView;
-  /** Tuck the "while you wait" list into a disclosure (the Overview). */
+  /** The Overview: a problem becomes one line, and the "while you wait" list a disclosure. */
   compact?: boolean;
 }) {
   const tone = TONE[view.tone];
   const Icon = tone.icon;
+
+  // On the Overview a problem (AWS denied, or the request failed) is one line,
+  // not a card that pushes the numbers off the screen. Everything it used to
+  // show (the summary, the case id, what works meanwhile) is on the page its
+  // button opens.
+  if (compact && view.tone === "problem") {
+    return (
+      <div
+        data-access-state={view.state}
+        className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border px-4 py-3"
+      >
+        <Icon className="text-muted-foreground size-4 shrink-0" aria-hidden />
+        <p className="text-sm font-medium">{view.title}</p>
+        <Badge variant="destructive">{tone.label}</Badge>
+        {view.next ? (
+          <Button asChild size="sm" className="ml-auto">
+            <Link href={view.next.href}>{view.next.label}</Link>
+          </Button>
+        ) : null}
+      </div>
+    );
+  }
 
   const waitList =
     view.canDoNow.length > 0 ? (

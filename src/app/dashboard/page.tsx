@@ -61,6 +61,9 @@ function ReputationNote({ level, kind }: { level: ReputationLevel; kind: "bounce
           <AlertTriangle className="size-3.5" aria-hidden /> Above warning threshold · {limits}
         </span>
       );
+    case "early":
+      // Neutral, not a warning: the number is real but too few sends back it.
+      return <span>Too few sends to judge yet · {limits}</span>;
     case "healthy":
       return <span>Healthy · {limits}</span>;
     case "none":
@@ -275,13 +278,13 @@ export default async function OverviewPage({
         <div className="text-muted-foreground grid gap-1 text-xs sm:grid-cols-2">
           <p>
             <span className="text-foreground font-medium">Bounce rate {formatRate(stats.bounceRate)}</span>{" "}
-            — <ReputationNote kind="bounce" level={reputationLevel("bounce", stats.bounceRate)} />
+            — <ReputationNote kind="bounce" level={reputationLevel("bounce", stats.bounceRate, { sample: stats.reachedSes, events: stats.bounced })} />
           </p>
           <p>
             <span className="text-foreground font-medium">
               Complaint rate {formatRate(stats.complaintRate)}
             </span>{" "}
-            — <ReputationNote kind="complaint" level={reputationLevel("complaint", stats.complaintRate)} />
+            — <ReputationNote kind="complaint" level={reputationLevel("complaint", stats.complaintRate, { sample: stats.reachedSes, events: stats.complained })} />
           </p>
         </div>
 

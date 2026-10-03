@@ -222,3 +222,34 @@ describe("delivery statistics arithmetic", () => {
     expect(summarise(30, { total: "4", delivered: "4" }).delivered).toBe(4);
   });
 });
+
+describe("reputation on a handful of sends", () => {
+  const few = { sample: 13, events: 1 };
+
+  it("calls a rate over the line 'too early' when few sends and few events back it", () => {
+    expect(reputationLevel("bounce", 1 / 13, few)).toBe("early");
+    expect(reputationLevel("complaint", 1 / 13, few)).toBe("early");
+  });
+
+  it("still warns once enough emails have gone out", () => {
+    expect(reputationLevel("bounce", 0.06, { sample: 100, events: 6 })).toBe("warning");
+    expect(reputationLevel("bounce", 0.12, { sample: 250, events: 30 })).toBe("review");
+    expect(reputationLevel("complaint", 0.006, { sample: 1000, events: 6 })).toBe("review");
+  });
+
+  it("never hides a real problem at low volume: five bounces or complaints is a signal", () => {
+    expect(reputationLevel("bounce", 0.5, { sample: 10, events: 5 })).toBe("review");
+    expect(reputationLevel("complaint", 0.5, { sample: 10, events: 5 })).toBe("review");
+    expect(reputationLevel("bounce", 0.5, { sample: 10, events: 4 })).toBe("early");
+  });
+
+  it("only softens rates that were over the line; healthy and empty are unchanged", () => {
+    expect(reputationLevel("bounce", 0.01, few)).toBe("healthy");
+    expect(reputationLevel("bounce", null, { sample: 0, events: 0 })).toBe("none");
+  });
+
+  it("without evidence it behaves exactly as before", () => {
+    expect(reputationLevel("bounce", 0.05)).toBe("warning");
+    expect(reputationLevel("complaint", 0.005)).toBe("review");
+  });
+});
