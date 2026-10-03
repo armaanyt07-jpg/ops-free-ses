@@ -28,7 +28,7 @@ function QuotaMeter({ used, max }: { used: number; max: number }) {
   return (
     <div className="space-y-1">
       <div
-        className="h-2 overflow-hidden rounded-full bg-sky-100"
+        className="h-2 overflow-hidden rounded-full bg-sky-100 dark:bg-sky-950"
         role="meter"
         aria-valuemin={0}
         aria-valuemax={max}
@@ -124,7 +124,7 @@ function CredentialCard({ credential }: { credential: CredentialSummary }) {
           </form>
           <form action={removeCredential}>
             <input type="hidden" name="id" value={credential.id} />
-            <Button type="submit" variant="ghost" size="sm" className="text-red-700">
+            <Button type="submit" variant="ghost" size="sm" className="text-red-700 dark:text-red-400">
               Delete
             </Button>
           </form>

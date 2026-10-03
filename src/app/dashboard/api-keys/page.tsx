@@ -145,7 +145,7 @@ export default async function ApiKeysPage({
                             {state === "active" ? <RotateKeyForm keyId={key.id} name={key.name} /> : null}
                             <form action={revokeKey}>
                               <input type="hidden" name="id" value={key.id} />
-                              <Button type="submit" variant="ghost" size="sm" className="text-red-700">
+                              <Button type="submit" variant="ghost" size="sm" className="text-red-700 dark:text-red-400">
                                 Revoke
                               </Button>
                             </form>

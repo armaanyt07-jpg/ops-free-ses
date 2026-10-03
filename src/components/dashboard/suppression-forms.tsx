@@ -75,7 +75,7 @@ export function RemoveSuppressionForm({ email, reason }: { email: string; reason
     <form action={action} className="ml-auto flex max-w-sm flex-col items-stretch gap-2 text-left">
       <input type="hidden" name="email" value={email} />
       {reason === "hard_bounce" || reason === "complaint" ? (
-        <p className="text-xs text-amber-800">
+        <p className="text-xs text-amber-800 dark:text-amber-300">
           This address {reason === "complaint" ? "complained" : "hard-bounced"}. Sending to it
           again can hurt your SES reputation.
         </p>
@@ -87,7 +87,7 @@ export function RemoveSuppressionForm({ email, reason }: { email: string; reason
         </Button>
         <Submit idle="Remove" busy="Removing…" variant="destructive" />
       </div>
-      {state.error ? <p className="text-xs text-red-700">{state.error}</p> : null}
+      {state.error ? <p className="text-xs text-red-700 dark:text-red-400">{state.error}</p> : null}
     </form>
   );
 }

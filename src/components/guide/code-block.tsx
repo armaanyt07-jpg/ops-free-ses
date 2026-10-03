@@ -12,7 +12,7 @@ export function CodeBlock({
   copyLabel?: string;
 }) {
   return (
-    <div className="overflow-hidden rounded-xl bg-zinc-950">
+    <div className="overflow-hidden rounded-xl bg-zinc-950 dark:ring-1 dark:ring-white/10">
       <div className="flex items-center justify-between border-b border-white/10 px-4 py-2">
         <span className="font-mono text-[0.7rem] text-white/50">{label ?? ""}</span>
         <CopyButton text={code} label={copyLabel} />

@@ -26,7 +26,7 @@ export function IamSetup() {
           save.
         </span>
         <div className="relative">
-          <pre className="max-h-48 overflow-auto rounded-lg bg-zinc-950 p-3 pr-20 font-mono text-[0.7rem] leading-relaxed text-zinc-200">
+          <pre className="max-h-48 overflow-auto rounded-lg bg-zinc-950 dark:ring-1 dark:ring-white/10 p-3 pr-20 font-mono text-[0.7rem] leading-relaxed text-zinc-200">
             {IAM_POLICY}
           </pre>
           <div className="absolute top-2 right-2">

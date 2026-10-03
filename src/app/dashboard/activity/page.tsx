@@ -212,7 +212,7 @@ export default async function ActivityPage({
                           ) : null}
                         </p>
                         {row.errorCode ? (
-                          <p className="truncate font-mono text-xs text-red-700 md:hidden">
+                          <p className="truncate font-mono text-xs text-red-700 dark:text-red-400 md:hidden">
                             {row.errorCode}
                           </p>
                         ) : null}
@@ -220,7 +220,7 @@ export default async function ActivityPage({
                       <TableCell className="text-muted-foreground hidden max-w-0 align-top font-mono text-xs md:table-cell">
                         <span className="block truncate">
                           {row.errorCode ? (
-                            <span className="text-red-700">{row.errorCode}</span>
+                            <span className="text-red-700 dark:text-red-400">{row.errorCode}</span>
                           ) : (
                             (row.messageId ?? "—")
                           )}

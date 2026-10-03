@@ -60,7 +60,7 @@ export default async function WebhooksPage() {
           <CardTitle className="flex items-center gap-2">
             {connected ? (
               <>
-                <CheckCircle2 className="size-4 text-emerald-700" aria-hidden />
+                <CheckCircle2 className="size-4 text-emerald-700 dark:text-emerald-400" aria-hidden />
                 Connected
               </>
             ) : (

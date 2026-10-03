@@ -37,7 +37,7 @@ export function ReviewForm({ hash }: { hash: string }) {
           {label}
         </label>
       ))}
-      {state.error ? <p className="text-sm text-red-700">{state.error}</p> : null}
+      {state.error ? <p className="text-sm text-red-700 dark:text-red-400">{state.error}</p> : null}
       <Confirm />
     </form>
   );

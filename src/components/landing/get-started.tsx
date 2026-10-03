@@ -135,7 +135,7 @@ export function GetStarted() {
                   {step.details ? (
                     <details className="mt-4 rounded-xl border px-4 py-3">
                       <summary className="cursor-pointer text-sm font-medium">{step.details.summary}</summary>
-                      <pre className="mt-3 overflow-x-auto rounded-lg bg-zinc-950 p-4 font-mono text-xs leading-relaxed text-zinc-200">
+                      <pre className="mt-3 overflow-x-auto rounded-lg bg-zinc-950 dark:ring-1 dark:ring-white/10 p-4 font-mono text-xs leading-relaxed text-zinc-200">
                         {step.details.code}
                       </pre>
                     </details>

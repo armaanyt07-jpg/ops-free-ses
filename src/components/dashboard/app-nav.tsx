@@ -1,5 +1,6 @@
 "use client";
 
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -183,14 +184,17 @@ function SignOut({ email }: { email: string }) {
       <p className="text-muted-foreground truncate text-xs" title={email}>
         {email}
       </p>
-      <form action="/auth/signout" method="post">
-        <button
-          type="submit"
-          className="text-muted-foreground hover:text-foreground text-sm underline-offset-4 hover:underline"
-        >
-          Sign out
-        </button>
-      </form>
+      <div className="flex items-center justify-between">
+        <form action="/auth/signout" method="post">
+          <button
+            type="submit"
+            className="text-muted-foreground hover:text-foreground text-sm underline-offset-4 hover:underline"
+          >
+            Sign out
+          </button>
+        </form>
+        <ThemeToggle />
+      </div>
     </div>
   );
 }

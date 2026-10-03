@@ -55,12 +55,12 @@ function IssueList({ issues }: { issues: Issue[] }) {
       <p className="flex items-center gap-2 font-medium">
         {errors.length > 0 ? (
           <>
-            <OctagonAlert className="size-4 text-red-700" aria-hidden />
+            <OctagonAlert className="size-4 text-red-700 dark:text-red-400" aria-hidden />
             {errors.length} error{errors.length === 1 ? "" : "s"} — fix before saving
           </>
         ) : (
           <>
-            <CheckCircle2 className="size-4 text-emerald-700" aria-hidden />
+            <CheckCircle2 className="size-4 text-emerald-700 dark:text-emerald-400" aria-hidden />
             Valid
             {warnings.length > 0 ? ` · ${warnings.length} suggestion${warnings.length === 1 ? "" : "s"}` : ""}
           </>
@@ -71,9 +71,9 @@ function IssueList({ issues }: { issues: Issue[] }) {
           {[...errors, ...warnings].map((issue, i) => (
             <li key={i} className="flex gap-2 text-xs">
               {issue.severity === "error" ? (
-                <OctagonAlert className="mt-0.5 size-3.5 shrink-0 text-red-700" aria-label="Error" />
+                <OctagonAlert className="mt-0.5 size-3.5 shrink-0 text-red-700 dark:text-red-400" aria-label="Error" />
               ) : (
-                <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-amber-700" aria-label="Warning" />
+                <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-amber-700 dark:text-amber-400" aria-label="Warning" />
               )}
               <span>
                 <span className="text-muted-foreground">
@@ -213,7 +213,7 @@ export function TemplateEditor({
       </div>
 
       {state.error ? (
-        <div role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+        <div role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200 dark:text-red-300">
           {state.error}
           {state.issues?.length ? <IssueList issues={state.issues} /> : null}
         </div>

@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { NavDropdown, type NavDropdownItem } from "@/components/landing/nav-dropdown";
 import { NavMobileAccordion } from "@/components/landing/nav-mobile-accordion";
 import { Wordmark } from "@/components/brand/wordmark";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 
 const PRODUCT_ITEMS: NavDropdownItem[] = [
   { href: "/#problem", label: "Why Ops-Free", description: "The problem with raw SES", icon: Layers },
@@ -67,6 +68,7 @@ export function LandingNav({ signedIn = false }: { signedIn?: boolean }) {
         </nav>
 
         <div className="ml-auto hidden items-center gap-2 sm:flex">
+          <ThemeToggle />
           {signedIn ? (
             <Button asChild size="sm">
               <Link href="/dashboard">Dashboard</Link>
@@ -83,13 +85,14 @@ export function LandingNav({ signedIn = false }: { signedIn?: boolean }) {
           )}
         </div>
 
+        <ThemeToggle className="ml-auto sm:hidden" />
         <button
           type="button"
           aria-expanded={mobileOpen}
           aria-controls="mobile-nav-panel"
           aria-label={mobileOpen ? "Close menu" : "Open menu"}
           onClick={() => setMobileOpen((o) => !o)}
-          className="hover:bg-muted ml-auto grid size-9 place-items-center rounded-md sm:hidden"
+          className="hover:bg-muted grid size-9 place-items-center rounded-md sm:hidden"
         >
           {mobileOpen ? <X className="size-5" /> : <Menu className="size-5" />}
         </button>

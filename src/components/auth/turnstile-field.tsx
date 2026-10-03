@@ -68,6 +68,8 @@ export function TurnstileField({
         if (cancelled || !container.current || !window.turnstile || widgetId.current) return;
         widgetId.current = window.turnstile.render(container.current, {
           sitekey: siteKey,
+          // Match the page, so a dark sign-in form doesn't carry a white box.
+          theme: document.documentElement.classList.contains("dark") ? "dark" : "light",
           // The standard widget needs about 300px. On narrower forms (small
           // phones) it would be clipped, so use Cloudflare's compact size.
           size: container.current.clientWidth < TURNSTILE_MIN_STANDARD_WIDTH ? "compact" : "flexible",

@@ -364,14 +364,14 @@ export function SandboxQuestionnaire({
       </div>
 
       {advice.length > 0 ? (
-        <ul className="space-y-1 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+        <ul className="space-y-1 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
           {advice.map((a) => (
             <li key={a}>• {a}</li>
           ))}
         </ul>
       ) : null}
 
-      {state.error ? <p className="text-sm text-red-700">{state.error}</p> : null}
+      {state.error ? <p className="text-sm text-red-700 dark:text-red-400">{state.error}</p> : null}
 
       <div className="flex flex-wrap items-center gap-3">
         {step > 0 ? (

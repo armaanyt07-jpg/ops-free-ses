@@ -51,13 +51,13 @@ function ReputationNote({ level, kind }: { level: ReputationLevel; kind: "bounce
   switch (level) {
     case "review":
       return (
-        <span className="flex items-center gap-1 text-red-700">
+        <span className="flex items-center gap-1 text-red-700 dark:text-red-400">
           <OctagonAlert className="size-3.5" aria-hidden /> Above review threshold · {limits}
         </span>
       );
     case "warning":
       return (
-        <span className="flex items-center gap-1 text-amber-700">
+        <span className="flex items-center gap-1 text-amber-700 dark:text-amber-400">
           <AlertTriangle className="size-3.5" aria-hidden /> Above warning threshold · {limits}
         </span>
       );
@@ -379,12 +379,12 @@ export default async function OverviewPage({
                 <p className="flex items-center gap-2">
                   {queue.workers.some((w) => w.healthy) ? (
                     <>
-                      <CheckCircle2 className="size-4 text-emerald-700" aria-hidden />
+                      <CheckCircle2 className="size-4 text-emerald-700 dark:text-emerald-400" aria-hidden />
                       {queue.workers.filter((w) => w.healthy).length} worker(s) healthy
                     </>
                   ) : (
                     <>
-                      <AlertTriangle className="size-4 text-amber-700" aria-hidden />
+                      <AlertTriangle className="size-4 text-amber-700 dark:text-amber-400" aria-hidden />
                       No worker running — messages will wait in the queue
                     </>
                   )}

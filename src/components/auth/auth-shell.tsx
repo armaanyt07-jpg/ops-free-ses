@@ -1,4 +1,5 @@
 import { Wordmark } from "@/components/brand/wordmark";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 import {
   Card,
   CardContent,
@@ -18,7 +19,8 @@ export function AuthShell({
   children: React.ReactNode;
 }) {
   return (
-    <main className="bg-muted/40 flex min-h-screen items-center justify-center p-6">
+    <main className="bg-muted/40 relative flex min-h-screen items-center justify-center p-6">
+      <ThemeToggle className="absolute top-4 right-4" />
       <div className="w-full max-w-sm space-y-6">
         <div className="flex items-center justify-center">
           <Wordmark />

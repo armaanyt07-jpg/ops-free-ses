@@ -27,9 +27,9 @@ export function ReadinessChecklist({ items }: { items: ReadinessItem[] }) {
           {items.map((item) => (
             <li key={item.id} className="flex gap-3 py-3 first:pt-0 last:pb-0">
               {item.status === "ok" ? (
-                <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-700" aria-label="In place" />
+                <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-700 dark:text-emerald-400" aria-label="In place" />
               ) : (
-                <CircleDashed className="mt-0.5 size-4 shrink-0 text-amber-700" aria-label="Worth a look" />
+                <CircleDashed className="mt-0.5 size-4 shrink-0 text-amber-700 dark:text-amber-400" aria-label="Worth a look" />
               )}
               <div className="min-w-0 space-y-0.5 text-sm">
                 <p className="font-medium">

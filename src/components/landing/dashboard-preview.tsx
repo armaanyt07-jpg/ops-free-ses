@@ -135,7 +135,7 @@ export function DashboardPreview() {
                     <CardTitle className="text-sm font-medium">Domain verification</CardTitle>
                   </CardHeader>
                   <CardContent className="flex items-center gap-1.5 px-3.5 text-sm">
-                    <CheckCircle2 className="size-4 text-emerald-700" aria-hidden />
+                    <CheckCircle2 className="size-4 text-emerald-700 dark:text-emerald-400" aria-hidden />
                     mail.example.com verified
                   </CardContent>
                 </Card>
@@ -152,7 +152,7 @@ export function DashboardPreview() {
                     <CardTitle className="text-sm font-medium">Sending status</CardTitle>
                   </CardHeader>
                   <CardContent className="flex items-center gap-1.5 px-3.5 text-sm">
-                    <CheckCircle2 className="size-4 text-emerald-700" aria-hidden />
+                    <CheckCircle2 className="size-4 text-emerald-700 dark:text-emerald-400" aria-hidden />
                     Workers healthy
                   </CardContent>
                 </Card>

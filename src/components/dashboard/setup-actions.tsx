@@ -78,7 +78,7 @@ export function QuickKeyStep({
             <p className="text-muted-foreground text-xs">Send from your code:</p>
             <CopyButton text={snippet} label="Copy" />
           </div>
-          <pre className="overflow-x-auto rounded-lg bg-zinc-950 p-3 font-mono text-xs leading-relaxed text-zinc-200">
+          <pre className="overflow-x-auto rounded-lg bg-zinc-950 dark:ring-1 dark:ring-white/10 p-3 font-mono text-xs leading-relaxed text-zinc-200">
             {snippet}
           </pre>
         </div>

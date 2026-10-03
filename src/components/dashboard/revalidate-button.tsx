@@ -20,7 +20,7 @@ export function RevalidateButton() {
   return (
     <form action={action} className="flex flex-col items-end gap-1">
       <Submit />
-      {state.error ? <p className="max-w-80 text-right text-xs text-red-700">{state.error}</p> : null}
+      {state.error ? <p className="max-w-80 text-right text-xs text-red-700 dark:text-red-400">{state.error}</p> : null}
       {state.ok ? <p className="text-muted-foreground text-xs">Updated from AWS.</p> : null}
     </form>
   );
