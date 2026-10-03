@@ -73,9 +73,11 @@ export default function TermsPage() {
             promise or influence the outcome.
           </li>
           <li>
-            The access key you give us can do what the policy you attached to it allows. We recommend a dedicated IAM
-            user with only the permissions we show you. You can cut off our access at any time by deleting that key or
-            user in AWS.
+            If you connect with one click, we use an IAM role that you create in your account from our CloudFormation
+            template. It can do only what its policy allows, and we use it only through short-lived sessions. If you
+            connect with an access key instead, that key can do what the policy you attached to it allows, and we
+            recommend a dedicated IAM user with only the permissions we show you. You can cut off our access at any
+            time by deleting the CloudFormation stack or role, or the key or user, in AWS.
           </li>
         </UL>
       </Section>
@@ -138,7 +140,7 @@ export default function TermsPage() {
       <Section id="ending" n={8} title="Suspension and ending">
         <UL>
           <li>
-            <B>You</B> can stop at any time: revoke your API keys, delete the IAM user or key in AWS, and email{" "}
+            <B>You</B> can stop at any time: revoke your API keys, delete the CloudFormation stack, role, IAM user or key in AWS, and email{" "}
             {LEGAL.contactEmail} to have your account deleted (see the Privacy Policy for what that removes).
           </li>
           <li>

@@ -16,7 +16,7 @@ export const LEGAL = {
   deletionTime: "30 days",
   upstashRegion: "Mumbai, India (ap-south-1)",
   signupEmailProvider: "Supabase (its built-in email service)",
-  updated: "2 October 2026",
+  updated: "3 October 2026",
 } as const;
 
 export type LegalKey = keyof typeof LEGAL;

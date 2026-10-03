@@ -171,10 +171,20 @@ export const TROUBLESHOOTING: Trouble[] = [
     ],
   },
   {
+    id: "connect-waiting",
+    question: "Connect AWS says “Waiting for AWS” and never finishes",
+    answer: [
+      "Check the tab AWS opened. The stack must reach CREATE_COMPLETE; if you didn't tick the acknowledgement box at the bottom of the page and click Create stack, nothing is created.",
+      "In AWS open CloudFormation (in the region shown in the page's address) and look at the stack named OpsFreeSES-… If it says ROLLBACK or CREATE_FAILED, open its Events tab: the first red line says why. Delete the failed stack and click Connect AWS again.",
+      "If the stack finished but Ops-Free still waits, wait a minute: a brand-new role can take a few seconds to become usable. If it then says AWS would not let Ops-Free use the role, delete the stack and start again, or use an access key under Advanced.",
+      "An attempt expires after two hours. Starting again is always safe.",
+    ],
+  },
+  {
     id: "access-denied",
     question: "“Connect events” or domain setup says access denied",
     answer: [
-      "The IAM user is missing a permission. The error names it. Replace the user's policy with the one in step 2 (it includes SNS and configuration-set permissions) and try again.",
+      "The connection is missing a permission. The error names it. If you connected with one click, click Connect AWS again (it replaces the old role with one that has the current permissions). If you connected with an access key, replace the IAM user's policy with the one in step 2 (it includes SNS and configuration-set permissions) and try again.",
       "Every step is safe to repeat. Pressing the button again finishes a half-done setup.",
     ],
   },

@@ -56,7 +56,9 @@ export default function PrivacyPage() {
             stored there in hashed form; we don’t keep it ourselves.
           </li>
           <li>
-            <B>Your AWS connection.</B> The access key ID, the region, and the secret access key. The secret is
+            <B>Your AWS connection.</B> If you connect with one click: the name (ARN) of the IAM role created in your
+            account, the region, and a random identifier we generated for your connection. No secret is stored. If you
+            connect with an access key: the access key ID, the region, and the secret access key, where the secret is
             encrypted (AES-256-GCM) before it is stored and is never shown again. We never ask for your AWS login.
           </li>
           <li>
@@ -164,14 +166,17 @@ export default function PrivacyPage() {
       <Section id="security" n={7} title="How we protect it">
         <UL>
           <li>Connections are encrypted in transit (HTTPS).</li>
-          <li>AWS secrets are encrypted before storage, and API keys are stored only as hashes.</li>
+          <li>
+            AWS secrets are encrypted before storage (a one-click connection stores no secret), and API keys are
+            stored only as hashes.
+          </li>
           <li>Each customer’s data is kept separate, and the database isn’t exposed to the public.</li>
           <li>Requests are rate limited, and logs are filtered so they don’t carry message bodies or credentials.</li>
         </UL>
         <p>
           No system is perfectly secure. If a breach affects your data, we will tell you without undue delay. To limit the
-          damage of any exposure, give us a dedicated IAM user with only the permissions we show you, and you can delete it
-          in AWS at any time.
+          damage of any exposure, connect with one click (no secret is stored) or give us a dedicated IAM user with only the permissions
+          we show you, and you can delete the role or user in AWS at any time.
         </p>
       </Section>
 
@@ -185,7 +190,7 @@ export default function PrivacyPage() {
       <Section id="rights" n={9} title="Your choices and rights">
         <UL>
           <li>You can ask us for a copy of your personal data, to correct it, or to delete it. Email {LEGAL.contactEmail}.</li>
-          <li>You can revoke our access to your AWS account at any time by deleting the access key or IAM user.</li>
+          <li>You can revoke our access to your AWS account at any time by deleting the CloudFormation stack or role, or the access key or IAM user.</li>
           <li>You can revoke API keys, remove domains and clear blocked addresses in the dashboard.</li>
           <li>
             Depending on where you live, the law may give you further rights, for example under India’s Digital Personal

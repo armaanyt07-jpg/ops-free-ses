@@ -7,7 +7,8 @@ import { IAM_POLICY } from "@/lib/aws/iam-policy";
 interface Step {
   title: string;
   body: React.ReactNode;
-  code?: string;
+  /** A collapsed block for readers who want to see exactly what they are granting. */
+  details?: { summary: string; code: string };
   optional?: boolean;
 }
 
@@ -20,12 +21,19 @@ const STEPS: Step[] = [
     title: "Connect your AWS account",
     body: (
       <>
-        In the AWS console, create an IAM user with the policy below and an
-        access key for it, then paste the key into the setup screen. It is
-        validated against AWS and stored encrypted.
+        Click <span className="text-foreground font-medium">Connect AWS</span> and pick your
+        region. In the AWS tab that opens, tick the box and click{" "}
+        <span className="text-foreground font-medium">Create stack</span>. That creates one IAM
+        role in your account that only Ops-Free can use, and the dashboard turns to Connected by
+        itself. No access keys to create, copy or store.{" "}
+        <a href="/aws-connect.yaml" className="text-foreground underline underline-offset-4">
+          Read the template first
+        </a>
+        . You can delete the stack in AWS at any time to cut off access, or use an access key
+        instead if you prefer.
       </>
     ),
-    code: IAM_POLICY,
+    details: { summary: "What the role is allowed to do", code: IAM_POLICY },
   },
   {
     title: "Verify your domain or email address",
@@ -124,10 +132,13 @@ export function GetStarted() {
                   <p className="text-muted-foreground mt-1.5 text-sm leading-relaxed">
                     {step.body}
                   </p>
-                  {step.code ? (
-                    <pre className="mt-4 overflow-x-auto rounded-xl bg-zinc-950 p-4 font-mono text-xs leading-relaxed text-zinc-200">
-                      {step.code}
-                    </pre>
+                  {step.details ? (
+                    <details className="mt-4 rounded-xl border px-4 py-3">
+                      <summary className="cursor-pointer text-sm font-medium">{step.details.summary}</summary>
+                      <pre className="mt-3 overflow-x-auto rounded-lg bg-zinc-950 p-4 font-mono text-xs leading-relaxed text-zinc-200">
+                        {step.details.code}
+                      </pre>
+                    </details>
                   ) : null}
                 </div>
               </li>

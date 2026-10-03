@@ -2,14 +2,7 @@ import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { StatusBadge } from "@/components/dashboard/status-badge";
-
-const FEED = [
-  { status: "delivered" as const, to: "user@example.com", subject: "Welcome to Acme", time: "2s ago" },
-  { status: "delivered" as const, to: "hi@stripe.com", subject: "Your invoice is ready", time: "14s ago" },
-  { status: "sent" as const, to: "team@vercel.com", subject: "Password reset", time: "31s ago" },
-  { status: "queued" as const, to: "founder@ycombinator.com", subject: "Weekly digest", time: "now" },
-];
+import { ConnectPreview } from "@/components/landing/connect-preview";
 
 export function Hero() {
   return (
@@ -30,19 +23,20 @@ export function Hero() {
         <div className="max-w-2xl">
           <div className="border-border bg-background/80 mb-6 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium backdrop-blur">
             <span className="bg-emerald-500 inline-block size-1.5 rounded-full" aria-hidden />
-            Built on Amazon SES — your AWS account, your credentials
+            New: one-click AWS connect. No access keys to create or store
           </div>
 
-          <h1 className="text-5xl leading-[1.05] font-semibold tracking-tight text-balance sm:text-6xl">
-            AWS SES is cheap.
+          <h1 className="text-5xl leading-[1.05] font-semibold tracking-tight sm:text-[3.4rem]">
+            <span className="sm:whitespace-nowrap">Connect Amazon SES</span>
             <br />
-            <span className="text-muted-foreground">Operating it isn&apos;t.</span>
+            <span className="text-muted-foreground">in one click.</span>
           </h1>
 
           <p className="text-muted-foreground mt-6 max-w-xl text-lg leading-relaxed text-balance">
-            Ops-Free gives developers a Resend/Postmark-style email
-            infrastructure layer powered by AWS SES — without forcing you to
-            manage the operational complexity yourself.
+            Ops-Free is a Resend/Postmark-style email API and dashboard that
+            sends through your own AWS account. Click Create stack in AWS and
+            you&apos;re connected: no IAM users to set up, no access keys to
+            copy, nothing secret for us to store.
           </p>
 
           <div className="mt-9 flex flex-wrap items-center gap-3">
@@ -59,9 +53,9 @@ export function Hero() {
 
           <dl className="mt-14 grid max-w-md grid-cols-3 gap-6 border-t pt-6">
             {[
-              ["1", "API to send, track and troubleshoot email"],
-              ["6", "operational problems handled automatically"],
-              ["0", "extra infrastructure for you to run"],
+              ["2", "clicks to connect your AWS account"],
+              ["0", "access keys stored with one-click connect"],
+              ["~1s", "from queued to handed to Amazon SES"],
             ].map(([value, label]) => (
               <div key={label}>
                 <dt className="text-3xl font-semibold tabular-nums">{value}</dt>
@@ -71,49 +65,7 @@ export function Hero() {
           </dl>
         </div>
 
-        {/* Product visualization: a live-looking activity feed, the same
-            status vocabulary and component as the real dashboard. */}
-        <div className="relative lg:justify-self-end">
-          <div className="bg-card w-full max-w-sm rounded-xl border shadow-lg ring-1 ring-black/[0.02]">
-            <div className="flex items-center justify-between border-b px-4 py-3">
-              <div className="flex items-center gap-1.5">
-                <span className="size-2.5 rounded-full bg-red-400/70" aria-hidden />
-                <span className="size-2.5 rounded-full bg-amber-400/70" aria-hidden />
-                <span className="size-2.5 rounded-full bg-emerald-400/70" aria-hidden />
-              </div>
-              <p className="text-muted-foreground font-mono text-[0.7rem]">Live activity</p>
-            </div>
-            <ul className="divide-y">
-              {FEED.map((row) => (
-                <li key={row.subject} className="flex items-center gap-3 px-4 py-3 text-sm">
-                  <StatusBadge status={row.status} />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium">{row.subject}</p>
-                    <p className="text-muted-foreground truncate text-xs">→ {row.to}</p>
-                  </div>
-                  <span className="text-muted-foreground shrink-0 text-xs">{row.time}</span>
-                </li>
-              ))}
-            </ul>
-            <div className="text-muted-foreground grid grid-cols-3 gap-2 border-t px-4 py-3 text-center text-xs">
-              <div>
-                <p className="text-foreground text-sm font-semibold tabular-nums">99.2%</p>
-                delivered
-              </div>
-              <div>
-                <p className="text-foreground text-sm font-semibold tabular-nums">0.3%</p>
-                bounce rate
-              </div>
-              <div>
-                <p className="text-foreground text-sm font-semibold tabular-nums">142ms</p>
-                p50 accept
-              </div>
-            </div>
-          </div>
-          <p className="text-muted-foreground mt-3 text-center text-xs">
-            Illustrative preview — your account starts empty.
-          </p>
-        </div>
+        <ConnectPreview />
       </div>
     </section>
   );

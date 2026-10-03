@@ -151,8 +151,10 @@ export default async function GuidePage() {
               </ul>
               <Note>
                 How it works: your app calls the Ops-Free API, we queue and send the message through your
-                SES account, and we track what happens next. Your AWS access key is stored encrypted and
-                you can cut off access any time by deleting the IAM user in AWS.
+                SES account, and we track what happens next. With one-click connect no secret is stored:
+                we use a role in your account for short-lived sessions, and you can cut off access any time
+                by deleting its CloudFormation stack in AWS. (Connecting with an access key instead stores
+                the key encrypted.)
               </Note>
             </section>
 
@@ -190,50 +192,99 @@ export default async function GuidePage() {
                   id="step-aws"
                   n={2}
                   title="Connect your AWS account"
-                  summary="Ops-Free needs permission to send through your SES account. You give it a dedicated, limited key rather than your AWS login."
+                  summary="Ops-Free needs permission to send through your SES account. One click creates a dedicated, limited role for it: no AWS login, no access key."
                 >
-                  <Substeps>
-                    <li>
-                      In the AWS console, open{" "}
+                  <div className="space-y-2">
+                    <p className="font-medium">Option A: one-click connect (recommended)</p>
+                    <Substeps>
+                      <li>
+                        In the dashboard, open <em>AWS</em> (or the first setup step). Choose the region where
+                        your SES account lives (for example <Code>ap-south-1</Code>) and click{" "}
+                        <em>Connect AWS</em>.
+                      </li>
+                      <li>
+                        A new tab opens on AWS&apos;s <em>Create stack</em> page, already filled in. Sign in to
+                        your AWS account if asked.
+                      </li>
+                      <li>
+                        Scroll to the bottom, tick the box acknowledging that AWS will create an IAM role, and
+                        click <em>Create stack</em>.
+                      </li>
+                      <li>
+                        Go back to Ops-Free. It says &ldquo;Waiting for AWS&rdquo; and turns to{" "}
+                        <em>Connected</em> by itself, usually within a minute. You can close the AWS tab.
+                      </li>
+                    </Substeps>
+                    <p className="text-muted-foreground">
+                      The stack creates one IAM role in your account. Only Ops-Free can use it, only with a
+                      random ID made for your connection, and only for short sessions of 15 minutes. Its
+                      permissions are the same ones listed under Option B. You can{" "}
                       <a
-                        href={IAM_CREATE_USER_URL}
+                        href="/aws-connect.yaml"
                         target="_blank"
                         rel="noreferrer"
-                        className="text-foreground font-medium underline underline-offset-4"
+                        className="text-foreground underline underline-offset-4"
                       >
-                        IAM → Users → Create user
-                      </a>
-                      . Name it <Code>ops-free</Code>. Leave &ldquo;console access&rdquo; off and click
-                      through to create it.
-                    </li>
-                    <li>
-                      Open the new user → <em>Add permissions → Create inline policy → JSON</em>. Paste this
-                      policy and save it:
-                    </li>
-                  </Substeps>
-                  <CodeBlock code={IAM_POLICY} label="IAM policy (JSON)" copyLabel="Copy policy" />
-                  <p className="text-muted-foreground">
-                    It allows sending, identity checks, event setup and (optionally) DNS publishing in
-                    Route 53. Nothing else in your account.
-                  </p>
-                  <Substeps start={3}>
-                    <li>
-                      Still on the user, open <em>Security credentials → Create access key</em> and choose
-                      &ldquo;Application running outside AWS&rdquo;. Copy the <em>Access key ID</em> and the{" "}
-                      <em>Secret access key</em>. AWS shows the secret once.
-                    </li>
-                    <li>
-                      Back in Ops-Free, paste both into the connect form with your AWS region. Use the region
-                      where your SES account lives (for example <Code>ap-south-1</Code>); domains and the
-                      sandbox are per region.
-                    </li>
-                  </Substeps>
+                        read the template
+                      </a>{" "}
+                      before you create it. To cut off access, delete the stack in AWS (CloudFormation → the
+                      stack named <Code>OpsFreeSES-…</Code> → Delete).
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <p className="font-medium">Option B: an IAM access key (advanced)</p>
+                    <p className="text-muted-foreground">
+                      Use this if you can&apos;t create CloudFormation stacks, or prefer a key. It&apos;s under
+                      &ldquo;Advanced&rdquo; in the dashboard.
+                    </p>
+                    <Substeps>
+                      <li>
+                        In the AWS console, open{" "}
+                        <a
+                          href={IAM_CREATE_USER_URL}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-foreground font-medium underline underline-offset-4"
+                        >
+                          IAM → Users → Create user
+                        </a>
+                        . Name it <Code>ops-free</Code>. Leave &ldquo;console access&rdquo; off and click
+                        through to create it.
+                      </li>
+                      <li>
+                        Open the new user → <em>Add permissions → Create inline policy → JSON</em>. Paste this
+                        policy and save it:
+                      </li>
+                    </Substeps>
+                    <CodeBlock code={IAM_POLICY} label="IAM policy (JSON)" copyLabel="Copy policy" />
+                    <p className="text-muted-foreground">
+                      It allows sending, identity checks, event setup and (optionally) DNS publishing in
+                      Route 53. Nothing else in your account.
+                    </p>
+                    <Substeps start={3}>
+                      <li>
+                        Still on the user, open <em>Security credentials → Create access key</em> and choose
+                        &ldquo;Application running outside AWS&rdquo;. Copy the <em>Access key ID</em> and the{" "}
+                        <em>Secret access key</em>. AWS shows the secret once.
+                      </li>
+                      <li>
+                        Back in Ops-Free, paste both into the connect form with your AWS region. Use the region
+                        where your SES account lives; domains and the sandbox are per region.
+                      </li>
+                    </Substeps>
+                  </div>
+
                   <Done>
                     the step turns green and shows &ldquo;Connected&rdquo; with your region. It tells you if
                     your account is still in the SES sandbox.
                   </Done>
                   <p className="text-muted-foreground">
                     Not working? See{" "}
+                    <a href="#connect-waiting" className="text-foreground underline underline-offset-4">
+                      stuck on &ldquo;Waiting for AWS&rdquo;
+                    </a>
+                    ,{" "}
                     <a href="#access-denied" className="text-foreground underline underline-offset-4">
                       access denied
                     </a>{" "}
