@@ -14,8 +14,8 @@ export const LEGAL = {
   governingLaw: "[GOVERNING LAW AND PLACE OF COURTS]",
   liabilityFloor: "[MINIMUM LIABILITY AMOUNT]",
   deletionTime: "30 days",
-  upstashRegion: "[UPSTASH REGION]",
-  signupEmailProvider: "[PROVIDER OF SIGN-UP AND PASSWORD-RESET EMAILS]",
+  upstashRegion: "Mumbai, India (ap-south-1)",
+  signupEmailProvider: "Supabase (its built-in email service)",
   updated: "2 October 2026",
 } as const;
 
