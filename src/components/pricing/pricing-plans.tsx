@@ -69,7 +69,7 @@ function PlanCard({ plan }: { plan: Plan }) {
   );
 }
 
-/** The three plan cards, the shared inclusions and the founding-member note. */
+/** The plan cards (Free and Pro), the shared inclusions and the founding-member note. */
 export function PricingPlans() {
   return (
     <div>
@@ -82,7 +82,7 @@ export function PricingPlans() {
         </p>
       ) : null}
 
-      <div className="grid gap-5 lg:grid-cols-3">
+      <div className="grid gap-5 md:grid-cols-2 lg:max-w-4xl">
         {PLANS.map((p) => (
           <PlanCard key={p.id} plan={p} />
         ))}
@@ -103,7 +103,7 @@ export function PricingPlans() {
         <div className="bg-muted/40 rounded-2xl border p-6">
           <p className="text-sm font-semibold">Founding-member rate</p>
           <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
-            Everyone who signs up during the beta gets {FOUNDING_DISCOUNT_PERCENT}% off Pro or Scale for as long as they
+            Everyone who signs up during the beta gets {FOUNDING_DISCOUNT_PERCENT}% off Pro for as long as they
             keep the plan, once paid plans open. The beta is free in the meantime.
           </p>
         </div>

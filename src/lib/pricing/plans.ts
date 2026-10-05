@@ -7,7 +7,7 @@
  * billed to the customer by AWS.
  */
 export type Plan = {
-  id: "free" | "pro" | "scale";
+  id: "free" | "pro";
   name: string;
   /** Whole dollars per month. */
   monthly: number;
@@ -18,7 +18,7 @@ export type Plan = {
   highlight?: boolean;
 };
 
-/** Flip when billing exists. Until then Pro and Scale show "Opens after beta". */
+/** Flip when billing exists. Until then Pro shows "Opens after beta". */
 export const PAID_PLANS_OPEN = false;
 
 /** Months billed for a year on annual billing (two months free). */
@@ -45,23 +45,11 @@ export const PLANS: Plan[] = [
   {
     id: "pro",
     name: "Pro",
-    monthly: 15,
+    monthly: 7,
     blurb: "For a product that sends real traffic.",
     emails: "50,000 emails / month",
     features: ["10 verified domains and addresses", "30-day email history"],
     highlight: true,
-  },
-  {
-    id: "scale",
-    name: "Scale",
-    monthly: 49,
-    blurb: "For high volume across many senders.",
-    emails: "250,000 emails / month",
-    features: [
-      "Overage billed per 1,000 emails beyond the quota",
-      "Unlimited verified domains and addresses",
-      "90-day email history",
-    ],
   },
 ];
 

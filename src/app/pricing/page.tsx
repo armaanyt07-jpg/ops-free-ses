@@ -10,7 +10,7 @@ import { getTenant } from "@/server/tenant";
 export const metadata: Metadata = {
   title: "Pricing — Ops-Free SES",
   description:
-    "Free to start, with Pro and Scale plans for higher volume. You keep paying Amazon for SES directly; Ops-Free is the operations layer on top.",
+    "Free to start, with one Pro plan at $7 a month for more volume and history. You keep paying Amazon for SES directly; Ops-Free is the operations layer on top.",
 };
 
 // The nav swaps sign-in for a dashboard link when the visitor is signed in.
@@ -23,7 +23,7 @@ const FAQ: Array<[string, string]> = [
   ],
   [
     "Can I pay for it today?",
-    "Not yet. The beta is free and Pro and Scale open once billing is ready. Everyone who signs up during the beta gets 50% off Pro or Scale for as long as they keep the plan.",
+    "Not yet. The beta is free and Pro opens once billing is ready. Everyone who signs up during the beta gets 50% off Pro for as long as they keep the plan.",
   ],
   [
     "How is usage counted?",
@@ -39,7 +39,7 @@ const FAQ: Array<[string, string]> = [
   ],
   [
     "Is the core product really free?",
-    "Yes. One-click setup, delivery events, automatic suppression, the API and the dashboard are on every plan, including Free. Paid plans raise volume, identities and history.",
+    "Yes. One-click setup, delivery events, automatic suppression, the API and the dashboard are on every plan, including Free. Pro raises volume, identities and history.",
   ],
 ];
 

@@ -14,26 +14,20 @@ const root = join(__dirname, "..", "..");
 const read = (p: string) => readFileSync(join(root, p), "utf8");
 
 describe("plans", () => {
-  it("are Free, Pro and Scale at $0, $15 and $49", () => {
+  it("are exactly Free and one Pro plan, at $0 and $7", () => {
     expect(PLANS.map((p) => [p.id, p.monthly])).toEqual([
       ["free", 0],
-      ["pro", 15],
-      ["scale", 49],
+      ["pro", 7],
     ]);
   });
 
   it("quote their email quotas in the agreed order", () => {
-    expect(PLANS.map((p) => p.emails)).toEqual([
-      "3,000 emails / month",
-      "50,000 emails / month",
-      "250,000 emails / month",
-    ]);
+    expect(PLANS.map((p) => p.emails)).toEqual(["3,000 emails / month", "50,000 emails / month"]);
   });
 
   it("give two months free on annual billing", () => {
     expect(ANNUAL_MONTHS_BILLED).toBe(10);
-    expect(annualPrice(15)).toBe(150);
-    expect(annualPrice(49)).toBe(490);
+    expect(annualPrice(7)).toBe(70);
   });
 
   it("show prices in dollars only", () => {
