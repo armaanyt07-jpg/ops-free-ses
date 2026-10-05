@@ -11,6 +11,7 @@ const COLUMNS = [
       { label: "API", href: "/#api" },
       { label: "Pricing", href: "/pricing" },
       { label: "Guide", href: "/guide" },
+      { label: "Security", href: "/security" },
       { label: "Dashboard", href: "/#dashboard" },
     ],
   },
