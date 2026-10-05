@@ -40,8 +40,8 @@ const STEPS: Array<{ step: string; raw: string[]; opsFree: string; outcome: Outc
       "Subscribe an HTTPS endpoint and confirm it",
       "Create a configuration set and its event destination",
     ],
-    opsFree: "One click creates the topic, the subscription and the configuration set in your account.",
-    outcome: "one-click",
+    opsFree: "Nothing. Connecting AWS also creates the topic, the subscription and the configuration set in your account.",
+    outcome: "removed",
   },
   {
     step: "Event handling",

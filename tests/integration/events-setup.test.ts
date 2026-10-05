@@ -53,7 +53,7 @@ vi.mock("@/lib/ses/client", () => ({
   sendViaSes: vi.fn(),
 }));
 
-const { connectEvents, EventsSetupError, hasManagedEvents } = await import("@/server/events-setup");
+const { connectEvents, connectEventsAfterConnect, EventsSetupError, hasManagedEvents } = await import("@/server/events-setup");
 const { storeCredential } = await import("@/server/credentials");
 const { findTopicByArn } = await import("@/server/sns-topics");
 
@@ -169,5 +169,33 @@ describe("connectEvents", () => {
       /already registered to another account/,
     );
     expect(aws.calls.map((c) => c.op)).toEqual(["SNS:CreateTopic"]);
+  });
+});
+
+describe("connectEventsAfterConnect", () => {
+  const PUBLIC = { url: ENDPOINT, local: false };
+
+  it("sets up events as part of connecting AWS", async () => {
+    expect(await connectEventsAfterConnect(userId, "production", PUBLIC)).toBe(true);
+    expect(await hasManagedEvents(userId, "production")).toBe(true);
+    expect(aws.calls.map((c) => c.op)).toContain("SES:CreateConfigurationSet");
+  });
+
+  it("does nothing once events are connected", async () => {
+    await connectEventsAfterConnect(userId, "production", PUBLIC);
+    aws.calls.length = 0;
+    expect(await connectEventsAfterConnect(userId, "production", PUBLIC)).toBe(true);
+    expect(aws.calls).toHaveLength(0);
+  });
+
+  it("never fails the connection; the Connect events button stays as the fallback", async () => {
+    aws.fail.set("SNS:CreateTopic", awsError("AccessDenied"));
+    expect(await connectEventsAfterConnect(userId, "production", PUBLIC)).toBe(false);
+    expect(await hasManagedEvents(userId, "production")).toBe(false);
+  });
+
+  it("skips when SNS couldn't reach this app", async () => {
+    expect(await connectEventsAfterConnect(userId, "production", { url: "http://localhost:3000/x", local: true })).toBe(false);
+    expect(aws.calls).toHaveLength(0);
   });
 });

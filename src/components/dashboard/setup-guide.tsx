@@ -245,7 +245,7 @@ export function SetupGuide({
               summary={
                 eventsConnected
                   ? "Connected. Deliveries, bounces and complaints show up in Activity."
-                  : "One click sets up Amazon SNS in your account so you see what happened to each email and bounced addresses stop being sent to."
+                  : "Normally set up when you connect AWS. If it's still open, one click sets up Amazon SNS in your account so you see what happened to each email and bounced addresses stop being sent to."
               }
             >
               {connected && !eventsConnected ? <ConnectEventsButton local={local} /> : null}

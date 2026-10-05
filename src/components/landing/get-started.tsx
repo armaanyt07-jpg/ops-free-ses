@@ -25,7 +25,8 @@ const STEPS: Step[] = [
         region. In the AWS tab that opens, tick the box and click{" "}
         <span className="text-foreground font-medium">Create stack</span>. That creates one IAM
         role in your account that only Ops-Free can use, and the dashboard turns to Connected by
-        itself. No access keys to create, copy or store.{" "}
+        itself. Delivery and bounce tracking is set up in the same step. No access keys to
+        create, copy or store.{" "}
         <a href="/aws-connect.yaml" className="text-foreground underline underline-offset-4">
           Read the template first
         </a>
@@ -58,17 +59,6 @@ const STEPS: Step[] = [
     ),
   },
   {
-    title: "Track deliveries and bounces",
-    optional: true,
-    body: (
-      <>
-        One click sets up Amazon SNS in your account, so every email&apos;s
-        outcome shows up in the dashboard and bounced addresses are added to your
-        blocked addresses automatically.
-      </>
-    ),
-  },
-  {
     title: "Start sending to anyone",
     optional: true,
     body: (
@@ -94,7 +84,7 @@ export function GetStarted() {
               From sign-up to first email.
             </h2>
             <p className="text-muted-foreground mt-4 text-sm leading-relaxed">
-              Four steps to send, two more before you go to production. You
+              Four steps to send, one more before you go to production. You
               need an AWS account, and a domain or just an email address.
             </p>
             <Button asChild className="mt-8">

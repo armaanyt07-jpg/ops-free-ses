@@ -15,6 +15,8 @@ import {
 import { SES_REGION_IDS } from "@/lib/aws/regions";
 import { ConnectError, checkConnection, startConnection, type ConnectionState } from "@/server/aws-connect";
 import { DASHBOARD_ENVIRONMENT } from "@/server/environment";
+import { connectEventsAfterConnect } from "@/server/events-setup";
+import { webhookEndpoint } from "@/server/public-url";
 import { requireTenant } from "@/server/tenant";
 
 /**
@@ -74,6 +76,7 @@ export async function saveCredential(
     });
 
     log.security("credential.saved", tenant.id, `${DASHBOARD_ENVIRONMENT} ${parsed.data.awsRegion}`);
+    await connectEventsAfterConnect(tenant.id, DASHBOARD_ENVIRONMENT, await webhookEndpoint());
     revalidatePath("/dashboard/aws");
     revalidatePath("/dashboard");
 
@@ -169,6 +172,9 @@ export async function pollAwsConnect(connectionId: string): Promise<ConnectionSt
 
   const state = await checkConnection(tenant.id, id.data);
   if (state.state === "connected") {
+    // Delivery events come with the connection. A no-op once they exist, so
+    // a repeated poll costs one lookup.
+    await connectEventsAfterConnect(tenant.id, DASHBOARD_ENVIRONMENT, await webhookEndpoint());
     revalidatePath("/dashboard/aws");
     revalidatePath("/dashboard");
   }

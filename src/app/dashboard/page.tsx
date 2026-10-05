@@ -222,7 +222,8 @@ export default async function OverviewPage({
           <CardHeader>
             <CardTitle>Track deliveries and bounces</CardTitle>
             <CardDescription>
-              One click sets up Amazon SNS in your AWS account, so each email&apos;s outcome
+              This is normally set up when you connect AWS, but it isn&apos;t yet, so emails stay on
+              &ldquo;sent&rdquo;. One click sets up Amazon SNS in your account, so each email&apos;s outcome
               shows up here and bounced addresses stop being sent to.
             </CardDescription>
           </CardHeader>

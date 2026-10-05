@@ -201,7 +201,7 @@ export const TROUBLESHOOTING: Trouble[] = [
     id: "stuck-sent",
     question: "Emails stay on “sent” and never become “delivered”",
     answer: [
-      "Delivery, bounce and complaint outcomes come from Amazon SNS, so you need to connect events. Use Connect events on the Webhooks page (or step 6 below).",
+      "Delivery, bounce and complaint outcomes come from Amazon SNS, which is normally set up when you connect AWS. If the dashboard still shows Connect events, click it (or see step 6 below).",
       "Emails sent before events were connected stay on “sent”. Only new emails get an outcome.",
     ],
   },

@@ -384,12 +384,15 @@ export default async function GuidePage() {
                   id="step-events"
                   n={6}
                   title="Track deliveries and bounces"
-                  badge="Recommended"
-                  summary="Without this, every email stays on “sent”. With it you see delivered, bounced and complained, and bad addresses are blocked automatically."
+                  badge="Automatic"
+                  summary="Set up for you when you connect AWS. It's what turns “sent” into delivered, bounced or complained, and blocks bad addresses automatically."
                 >
                   <Substeps>
-                    <li>Open <em>Webhooks</em> in the dashboard, or use the last step of the setup page.</li>
-                    <li>Click <em>Connect events</em>.</li>
+                    <li>Nothing to do: this runs as soon as your AWS account connects.</li>
+                    <li>
+                      If the dashboard still shows <em>Connect events</em>, click it. If AWS refuses, it tells you which
+                      permission is missing.
+                    </li>
                   </Substeps>
                   <p className="text-muted-foreground">
                     In your AWS account this creates an SNS topic named <Code>ops-free-ses-events</Code> and an SES

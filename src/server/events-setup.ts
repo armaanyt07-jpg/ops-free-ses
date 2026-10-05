@@ -10,6 +10,7 @@ import {
   ensureEventsTopic,
   subscribeWebhook,
 } from "@/lib/aws/events";
+import { log } from "@/lib/api/logger";
 import { loadSesCredentials } from "@/server/credentials";
 import { registerTopic, TopicRegistrationError } from "@/server/sns-topics";
 
@@ -112,6 +113,36 @@ export async function connectEvents(
   }
 
   return { topicArn, domains };
+}
+
+/**
+ * Runs "Connect events" as part of connecting AWS, so it isn't a separate
+ * setup step. Best effort: the AWS connection stands either way, and if this
+ * fails the dashboard keeps the Connect events button, which shows AWS's
+ * reason when pressed. Skips when events are already connected, or when SNS
+ * couldn't reach this app (local development without a tunnel).
+ */
+export async function connectEventsAfterConnect(
+  userId: string,
+  environment: Environment,
+  endpoint: { url: string; local: boolean },
+): Promise<boolean> {
+  if (await hasManagedEvents(userId, environment)) return true;
+  if (endpoint.local) return false;
+  try {
+    const result = await connectEvents(userId, environment, endpoint.url);
+    log.security("sns_topic.connected", userId, `${result.topicArn} (with AWS connect)`);
+    return true;
+  } catch (error) {
+    log.warn({
+      event: "sns_topic.auto_connect_failed",
+      requestId: "aws-connect",
+      userId,
+      environment,
+      detail: error instanceof EventsSetupError ? error.message : error instanceof Error ? error.name : "unknown",
+    });
+    return false;
+  }
 }
 
 /** True once "Connect events" has run for this environment. */
