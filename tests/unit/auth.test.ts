@@ -100,7 +100,7 @@ describe("auth email links point back at this app", () => {
     process.env.PUBLIC_APP_URL = "https://ops.example.test/";
     auth.signUp.mockResolvedValue({ data: { session: null }, error: null });
     const { signUp } = await import("@/app/login/actions");
-    const out = await signUp({}, form({ email: "a@b.test", password: "long-enough" }));
+    const out = await signUp({}, form({ email: "a@b.test", password: "Long-enough1!" }));
     expect(out.notice).toMatch(/confirm/);
     expect(auth.signUp.mock.calls[0]![0].options.emailRedirectTo).toBe(
       "https://ops.example.test/auth/confirm?next=%2Fdashboard",
@@ -152,24 +152,34 @@ describe("updatePassword", () => {
     auth.updateUser.mockResolvedValue({ error: null });
     const { updatePassword } = await import("@/app/login/actions");
     await expect(
-      updatePassword({}, form({ password: "new-password-1", confirm: "new-password-1" })),
+      updatePassword({}, form({ password: "New-password-1", confirm: "New-password-1" })),
     ).rejects.toThrow("REDIRECT:/dashboard");
-    expect(auth.updateUser).toHaveBeenCalledWith({ password: "new-password-1" });
+    expect(auth.updateUser).toHaveBeenCalledWith({ password: "New-password-1" });
   });
 
   it("rejects mismatched or short passwords before calling Supabase", async () => {
     const { updatePassword } = await import("@/app/login/actions");
-    expect((await updatePassword({}, form({ password: "new-password-1", confirm: "other-pass-1" }))).error).toMatch(/match/);
+    expect((await updatePassword({}, form({ password: "New-password-1", confirm: "other-pass-1" }))).error).toMatch(/match/);
     expect((await updatePassword({}, form({ password: "short", confirm: "short" }))).error).toMatch(/8 characters/);
     expect(auth.updateUser).not.toHaveBeenCalled();
   });
+
+  it.each(["alllowercase-1", "ALLUPPERCASE-1", "NoSymbolsHere1", "NoNumbers-here"])(
+    "rejects %s, which misses a character rule",
+    async (password) => {
+      const { updatePassword } = await import("@/app/login/actions");
+      const out = await updatePassword({}, form({ password, confirm: password }));
+      expect(out.error).toMatch(/uppercase letter, a lowercase letter, a number and a symbol/);
+      expect(auth.updateUser).not.toHaveBeenCalled();
+    },
+  );
 
   it("explains a reused password", async () => {
     auth.updateUser.mockResolvedValue({
       error: { name: "AuthApiError", status: 422, code: "same_password" },
     });
     const { updatePassword } = await import("@/app/login/actions");
-    const out = await updatePassword({}, form({ password: "old-password-1", confirm: "old-password-1" }));
+    const out = await updatePassword({}, form({ password: "Old-password-1", confirm: "Old-password-1" }));
     expect(out.error).toMatch(/different/);
   });
 
@@ -178,7 +188,41 @@ describe("updatePassword", () => {
       error: { name: "AuthSessionMissingError", status: 400 },
     });
     const { updatePassword } = await import("@/app/login/actions");
-    const out = await updatePassword({}, form({ password: "new-password-1", confirm: "new-password-1" }));
+    const out = await updatePassword({}, form({ password: "New-password-1", confirm: "New-password-1" }));
     expect(out.error).toMatch(/new reset link/);
+  });
+});
+
+describe("password rules", () => {
+  it.each([
+    ["Abcdef!1", true],
+    ["Abcdef~1", true],
+    ["Abc!1", false],
+    ["abcdefg!1", false],
+    ["ABCDEFG!1", false],
+    ["Abcdefgh1", false],
+    ["Abcdefg!", false],
+    ["Abcd efg1", false],
+    ["Abcdefg£1", false],
+  ])("%s → %s", async (password, ok) => {
+    const { passwordMeetsRules } = await import("@/lib/auth/password-rules");
+    expect(passwordMeetsRules(password)).toBe(ok);
+  });
+
+  it("sign-up rejects a weak password before calling Supabase", async () => {
+    const { signUp } = await import("@/app/login/actions");
+    const out = await signUp({}, form({ email: "a@b.test", password: "longenough" }));
+    expect(out.error).toMatch(/uppercase/);
+    expect(auth.signUp).not.toHaveBeenCalled();
+  });
+
+  it("sign-in still accepts an older password that predates the rules", async () => {
+    const { signIn } = await import("@/app/login/actions");
+    const signInWithPassword = vi.fn(async () => ({ error: null }));
+    Object.assign(auth, { signInWithPassword });
+    await expect(signIn({}, form({ email: "a@b.test", password: "oldpassword" }))).rejects.toThrow(
+      "REDIRECT:/dashboard",
+    );
+    expect(signInWithPassword).toHaveBeenCalled();
   });
 });

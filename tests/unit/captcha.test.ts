@@ -44,7 +44,7 @@ const form = (values: Record<string, string>): FormData => {
 };
 
 const KEY = "SITE_KEY_FOR_TESTS";
-const creds = { email: "a@example.com", password: "correct-horse" };
+const creds = { email: "a@example.com", password: "Correct-horse1" };
 
 beforeEach(() => {
   vi.clearAllMocks();

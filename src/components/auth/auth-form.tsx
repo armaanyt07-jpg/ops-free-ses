@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { AuthFormState } from "@/app/login/actions";
+import { PasswordChecklist } from "@/components/auth/password-checklist";
 import { TurnstileField } from "@/components/auth/turnstile-field";
 import { formNeedsCaptcha, turnstileSiteKey } from "@/lib/auth/captcha";
 
@@ -50,6 +51,8 @@ export function AuthForm({
   // Bot protection (Cloudflare Turnstile): inert unless a site key is set.
   const protectedForm = Boolean(turnstileSiteKey()) && formNeedsCaptcha(fields);
   const [captchaToken, setCaptchaToken] = useState("");
+  // Typed so the requirements checklist can tick off rules as they are met.
+  const [password, setPassword] = useState("");
 
   return (
     <form action={formAction} className="space-y-4">
@@ -76,7 +79,11 @@ export function AuthForm({
             autoComplete={newAccount ? "new-password" : "current-password"}
             minLength={8}
             required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            aria-describedby={newAccount ? "password-rules" : undefined}
           />
+          {newAccount ? <PasswordChecklist id="password-rules" password={password} /> : null}
         </div>
       ) : null}
 
@@ -91,7 +98,11 @@ export function AuthForm({
               autoComplete="new-password"
               minLength={8}
               required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              aria-describedby="password-rules"
             />
+            <PasswordChecklist id="password-rules" password={password} />
           </div>
           <div className="space-y-2">
             <Label htmlFor="confirm">Confirm new password</Label>

@@ -6,6 +6,7 @@ import { z } from "zod";
 
 import { log } from "@/lib/api/logger";
 import { CAPTCHA_FAILED_MESSAGE, isCaptchaError, readCaptchaToken } from "@/lib/auth/captcha";
+import { NEW_PASSWORD_MESSAGE, newPasswordSchema } from "@/lib/auth/password-rules";
 import { createClient } from "@/lib/supabase/server";
 import { appOrigin } from "@/server/public-url";
 
@@ -15,6 +16,12 @@ const passwordSchema = z.string().min(8, "Password must be at least 8 characters
 const credentialsSchema = z.object({
   email: emailSchema,
   password: passwordSchema,
+});
+
+/** Sign-up: a new password must meet the full rules (see password-rules.ts). */
+const signUpSchema = z.object({
+  email: emailSchema,
+  password: newPasswordSchema,
 });
 
 /** Where auth emails send the user back to: `/auth/confirm`, then `next`. */
@@ -74,7 +81,7 @@ export async function signUp(
   _prev: AuthFormState,
   formData: FormData,
 ): Promise<AuthFormState> {
-  const parsed = credentialsSchema.safeParse({
+  const parsed = signUpSchema.safeParse({
     email: formData.get("email"),
     password: formData.get("password"),
   });
@@ -104,6 +111,7 @@ export async function signUp(
       status: String(error.status ?? ""),
       errorCode: error.code ?? error.name,
     });
+    if (error.code === "weak_password") return { error: NEW_PASSWORD_MESSAGE };
     return { error: "That account could not be created." };
   }
 
@@ -171,7 +179,7 @@ export async function updatePassword(
   formData: FormData,
 ): Promise<AuthFormState> {
   const parsed = z
-    .object({ password: passwordSchema, confirm: z.string() })
+    .object({ password: newPasswordSchema, confirm: z.string() })
     .refine((v) => v.password === v.confirm, { message: "The passwords do not match." })
     .safeParse({ password: formData.get("password"), confirm: formData.get("confirm") });
 
@@ -193,7 +201,7 @@ export async function updatePassword(
       return { error: "Choose a password different from your current one." };
     }
     if (error.code === "weak_password") {
-      return { error: "That password is too weak. Use a longer one." };
+      return { error: NEW_PASSWORD_MESSAGE };
     }
     return { error: "The password could not be changed. Request a new reset link and try again." };
   }
