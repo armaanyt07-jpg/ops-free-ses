@@ -1,10 +1,12 @@
 import "server-only";
 
 import { redirect } from "next/navigation";
-import { sql } from "drizzle-orm";
+import { and, eq, ne, sql } from "drizzle-orm";
+import { pgSchema, uuid, varchar } from "drizzle-orm/pg-core";
 
 import { getDb } from "@/db";
 import { users, type User } from "@/db/schema";
+import { log } from "@/lib/api/logger";
 import { createClient } from "@/lib/supabase/server";
 
 /**
@@ -30,6 +32,15 @@ function toTenant(row: User): Tenant {
 }
 
 /**
+ * Supabase's own user table, read only to tell a stale tenant row from a live
+ * one. Declared here rather than in the schema so migrations never touch it.
+ */
+const authUsers = pgSchema("auth").table("users", {
+  id: uuid("id").primaryKey(),
+  email: varchar("email", { length: 255 }),
+});
+
+/**
  * Idempotently mirrors the authenticated Supabase user into `users`.
  * Safe to call on every request; a conflicting email is updated in place.
  */
@@ -38,9 +49,19 @@ export async function ensureTenant(
   email: string,
   displayName: string | null,
 ): Promise<Tenant> {
-  const db = getDb();
+  try {
+    return await upsertTenant(id, email, displayName);
+  } catch (error) {
+    // The id conflict is handled by the upsert, so this is the email: another
+    // tenant row still holds it. Free it, then try once more.
+    if (!isUniqueViolation(error)) throw error;
+    await releaseStaleEmail(id, email);
+    return upsertTenant(id, email, displayName);
+  }
+}
 
-  const [row] = await db
+async function upsertTenant(id: string, email: string, displayName: string | null): Promise<Tenant> {
+  const [row] = await getDb()
     .insert(users)
     .values({ id, email, displayName })
     .onConflictDoUpdate({
@@ -54,6 +75,46 @@ export async function ensureTenant(
   }
 
   return toTenant(row);
+}
+
+/**
+ * Supabase Auth keeps emails unique, so a different tenant row holding this
+ * email is out of date. Either its auth user was deleted (the person removed
+ * their account and signed up again), so the row and everything under it goes,
+ * or that user changed email and hasn't made a request since, so only the
+ * mirrored email is corrected. Never deletes a tenant whose auth user exists.
+ */
+async function releaseStaleEmail(id: string, email: string): Promise<void> {
+  await getDb().transaction(async (tx) => {
+    const [holder] = await tx
+      .select({ id: users.id })
+      .from(users)
+      .where(and(eq(users.email, email), ne(users.id, id)))
+      .limit(1);
+    if (!holder) return;
+
+    const [auth] = await tx
+      .select({ email: authUsers.email })
+      .from(authUsers)
+      .where(eq(authUsers.id, holder.id))
+      .limit(1);
+
+    if (!auth) {
+      await tx.delete(users).where(eq(users.id, holder.id));
+      log.security("tenant.orphan_removed", holder.id, "auth user deleted; email reused by a new sign-up");
+      return;
+    }
+    if (auth.email && auth.email !== email) {
+      await tx.update(users).set({ email: auth.email, updatedAt: sql`now()` }).where(eq(users.id, holder.id));
+      return;
+    }
+    throw new Error("Two auth users share one email; refusing to reconcile tenant rows");
+  });
+}
+
+function isUniqueViolation(error: unknown): boolean {
+  const e = error as { code?: string; cause?: { code?: string } };
+  return e?.code === "23505" || e?.cause?.code === "23505";
 }
 
 /**
