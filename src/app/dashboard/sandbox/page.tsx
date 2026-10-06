@@ -36,7 +36,7 @@ const REVIEW_LABEL: Record<string, string> = {
 /**
  * AWS sandbox-exit assistant — SRS §13, Phase 6.
  *
- * Questionnaire → generated request (a draft, with the source of every
+ * One-screen questionnaire → generated request (a draft, with the source of every
  * statement) → human review → copy into AWS. The platform never submits and
  * never states or predicts an outcome; the only status shown is AWS's own,
  * labelled as such, from the last time AWS was asked.
@@ -140,8 +140,26 @@ export default async function SandboxPage() {
 
       <Card id="questionnaire">
         <CardHeader>
-          <CardTitle>Questionnaire</CardTitle>
-          <CardDescription>Saved as a draft at each step. Leave anything blank rather than guess — blank answers are left out, never filled in.</CardDescription>
+          <CardTitle>Your answers</CardTitle>
+          <CardDescription>
+            Three questions only you can answer; the rest comes from your account. Leave anything blank rather than
+            guess: blank answers are left out, never filled in.
+            {REGION.test(region) ? (
+              <>
+                {" "}
+                Rather write it yourself?{" "}
+                <a
+                  href={`https://console.aws.amazon.com/ses/home?region=${region}#/account`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline underline-offset-4"
+                >
+                  Open the SES console
+                </a>
+                .
+              </>
+            ) : null}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <SandboxQuestionnaire initial={draft} facts={facts} defaultRegion={credential?.awsRegion ?? null} />

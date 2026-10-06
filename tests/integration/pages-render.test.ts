@@ -168,7 +168,7 @@ describe("production-access assistant page", () => {
 
   it("renders the questionnaire and lists what is missing", async () => {
     const out = await html(await page());
-    for (const t of ["Status reported by AWS", "In the sandbox", "Questionnaire", "Answer these to generate the request"]) {
+    for (const t of ["Status reported by AWS", "In the sandbox", "Your answers", "Answer these to generate the request"]) {
       expect(out).toContain(t);
     }
     expect(out).not.toContain("Copy use case description");

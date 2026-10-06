@@ -17,7 +17,7 @@ never fabricate compliance evidence or guarantee approval."
 
 | Scope item | How |
 | --- | --- |
-| Interactive questionnaire | six steps, saved as a draft at each step, per environment |
+| Interactive questionnaire | one screen: three questions only the user can answer; region, website and true platform evidence pre-filled; the rest optional under "More details"; saved as a draft per environment. Citing active automatic suppression stands in for the bounce, complaint and suppression answers |
 | Expected sending volume | per day (required), per month and peak/second (optional) — stated as *estimates* |
 | Product/use-case description | free text, at least 80 characters, quoted verbatim |
 | Recipient acquisition process | methods (checkboxes) + description |

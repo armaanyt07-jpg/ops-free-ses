@@ -66,6 +66,29 @@ describe("required answers", () => {
     expect(() => generateRequest({ ...COMPLETE, bounceHandling: undefined }, NO_FACTS)).toThrow(/Bounce handling/);
   });
 
+  it("does not require a company name", () => {
+    const r = generateRequest({ ...COMPLETE, companyName: undefined }, NO_FACTS);
+    expect(r.sections[0]).toEqual({ heading: "About us", body: "https://quokka.example", source: "Your answer: website" });
+  });
+
+  it("lets automatic suppression answer bounce, complaint and suppression handling only when it is true", () => {
+    const own = { ...COMPLETE, bounceHandling: undefined, complaintHandling: undefined, suppressionStrategy: undefined };
+    const cited = { ...own, include: { domains: [], autoSuppression: true, metrics: false } };
+    const handling = ["Bounce handling", "Complaint handling", "Suppression strategy"];
+
+    expect(missingAnswers(cited, FACTS)).toEqual([]);
+    // Not cited, not true right now, or no account behind it (the public writer): still the user's to answer.
+    expect(missingAnswers(own, FACTS)).toEqual(handling);
+    expect(missingAnswers(cited, { ...FACTS, autoSuppressionActive: false })).toEqual(handling);
+    expect(missingAnswers(cited)).toEqual(handling);
+
+    const r = generateRequest(cited, FACTS);
+    const bounce = r.sections.find((s) => s.heading === "Bounce handling");
+    expect(bounce?.source).toBe("Platform fact you included: SNS connected, automatic suppression active");
+    expect(bounce?.body).toMatch(/^Bounce notifications are delivered to us through Amazon SNS/);
+    expect(r.sections.some((s) => s.heading === "Suppression list")).toBe(false);
+  });
+
   it("rejects a non-URL website", () => {
     expect(missingAnswers({ ...COMPLETE, websiteUrl: "quokka dot example" })).toContain("Website URL (https://…)");
   });

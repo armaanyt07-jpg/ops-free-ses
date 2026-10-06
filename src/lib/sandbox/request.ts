@@ -83,11 +83,23 @@ export const draftSchema = z
 
 export type Draft = z.infer<typeof draftSchema>;
 
+/**
+ * True when the request can describe bounce, complaint and suppression
+ * handling from a platform fact instead of the user's own words: the user
+ * chose to include it, and it is true right now.
+ */
+export function platformHandlesBounces(d: Draft, facts?: PlatformFacts): boolean {
+  return Boolean(d.include?.autoSuppression && facts?.autoSuppressionActive);
+}
+
+/** Your own process, required unless the platform's automatic handling is cited. */
+const handling = (key: "bounceHandling" | "complaintHandling" | "suppressionStrategy") => (d: Draft, facts?: PlatformFacts) =>
+  platformHandlesBounces(d, facts) || (d[key]?.length ?? 0) >= 20;
+
 /** What each required question needs before a request can be generated. */
-export const REQUIRED: Array<{ key: keyof Draft; label: string; check: (d: Draft) => boolean }> = [
+export const REQUIRED: Array<{ key: keyof Draft; label: string; check: (d: Draft, facts?: PlatformFacts) => boolean }> = [
   { key: "region", label: "AWS region", check: (d) => Boolean(d.region) },
   { key: "mailType", label: "Mail type", check: (d) => Boolean(d.mailType) },
-  { key: "companyName", label: "Company or product name", check: (d) => Boolean(d.companyName) },
   {
     key: "websiteUrl",
     label: "Website URL (https://…)",
@@ -105,9 +117,9 @@ export const REQUIRED: Array<{ key: keyof Draft; label: string; check: (d: Draft
     label: "How you obtain recipients (at least 40 characters)",
     check: (d) => (d.acquisitionDetails?.length ?? 0) >= 40,
   },
-  { key: "bounceHandling", label: "Bounce handling", check: (d) => (d.bounceHandling?.length ?? 0) >= 20 },
-  { key: "complaintHandling", label: "Complaint handling", check: (d) => (d.complaintHandling?.length ?? 0) >= 20 },
-  { key: "suppressionStrategy", label: "Suppression strategy", check: (d) => (d.suppressionStrategy?.length ?? 0) >= 20 },
+  { key: "bounceHandling", label: "Bounce handling", check: handling("bounceHandling") },
+  { key: "complaintHandling", label: "Complaint handling", check: handling("complaintHandling") },
+  { key: "suppressionStrategy", label: "Suppression strategy", check: handling("suppressionStrategy") },
   {
     key: "unsubscribeHandling",
     label: "Unsubscribe handling (required for marketing mail)",
@@ -115,8 +127,12 @@ export const REQUIRED: Array<{ key: keyof Draft; label: string; check: (d: Draft
   },
 ];
 
-export function missingAnswers(draft: Draft): string[] {
-  return REQUIRED.filter((r) => !r.check(draft)).map((r) => r.label);
+/**
+ * Without `facts`, nothing from the platform can stand in for an answer (the
+ * public writer has no account behind it).
+ */
+export function missingAnswers(draft: Draft, facts?: PlatformFacts): string[] {
+  return REQUIRED.filter((r) => !r.check(draft, facts)).map((r) => r.label);
 }
 
 // ---------------------------------------------------------------------------
@@ -191,6 +207,13 @@ export interface GeneratedRequest {
 export const USE_CASE_MAX = 5000;
 
 const n = (value: number) => value.toLocaleString("en-US");
+
+/** Where a section came from: the user's answer, a platform fact they included, or both. */
+function sourceOf(answer: string | undefined, platform: boolean, question: string, fact: string): string {
+  if (answer && platform) return `Your answer, plus a platform fact you included: ${fact}`;
+  if (platform) return `Platform fact you included: ${fact}`;
+  return `Your answer: ${question}`;
+}
 const pct = (value: number) => `${(value * 100).toFixed(2)}%`;
 
 /**
@@ -198,16 +221,20 @@ const pct = (value: number) => `${(value * 100).toFixed(2)}%`;
  * missing — callers check `missingAnswers` first; this is the backstop.
  */
 export function generateRequest(draft: Draft, facts: PlatformFacts): GeneratedRequest {
-  const missing = missingAnswers(draft);
+  const missing = missingAnswers(draft, facts);
   if (missing.length > 0) throw new Error(`Missing answers: ${missing.join(", ")}`);
-  const d = draft as Required<Pick<Draft, "region" | "mailType" | "companyName" | "websiteUrl" | "useCase" | "dailyVolume" | "acquisitionDetails" | "bounceHandling" | "complaintHandling" | "suppressionStrategy">> & Draft;
+  const d = draft as Required<Pick<Draft, "region" | "mailType" | "websiteUrl" | "useCase" | "dailyVolume" | "acquisitionDetails">> & Draft;
 
   const sections: Section[] = [];
   const add = (heading: string, body: string | undefined | null, source: string) => {
     if (body && body.trim()) sections.push({ heading, body: body.trim(), source });
   };
 
-  add("About us", `${d.companyName} (${d.websiteUrl})`, "Your answers: company name, website");
+  add(
+    "About us",
+    d.companyName ? `${d.companyName} (${d.websiteUrl})` : d.websiteUrl,
+    d.companyName ? "Your answers: company name, website" : "Your answer: website",
+  );
   add("Use case", d.useCase, "Your answer: use case");
 
   const types = [
@@ -237,34 +264,31 @@ export function generateRequest(draft: Draft, facts: PlatformFacts): GeneratedRe
   );
 
   const include = d.include ?? { domains: [], autoSuppression: false, metrics: false };
+  const platform = platformHandlesBounces(d, facts);
 
   add(
     "Bounce handling",
     [
       d.bounceHandling,
-      include.autoSuppression && facts.autoSuppressionActive
+      platform
         ? "Bounce notifications are delivered to us through Amazon SNS; addresses that hard-bounce are added to a suppression list automatically and are not sent to again."
         : null,
     ]
       .filter(Boolean)
       .join("\n"),
-    include.autoSuppression && facts.autoSuppressionActive
-      ? "Your answer, plus a platform fact you included: SNS connected, automatic suppression active"
-      : "Your answer: bounce handling",
+    sourceOf(d.bounceHandling, platform, "bounce handling", "SNS connected, automatic suppression active"),
   );
   add(
     "Complaint handling",
     [
       d.complaintHandling,
-      include.autoSuppression && facts.autoSuppressionActive
+      platform
         ? "Complaint notifications are delivered through Amazon SNS; complaining addresses are suppressed automatically."
         : null,
     ]
       .filter(Boolean)
       .join("\n"),
-    include.autoSuppression && facts.autoSuppressionActive
-      ? "Your answer, plus a platform fact you included"
-      : "Your answer: complaint handling",
+    sourceOf(d.complaintHandling, platform, "complaint handling", "SNS connected, automatic suppression active"),
   );
   add("Suppression list", d.suppressionStrategy, "Your answer: suppression strategy");
   add("Unsubscribe handling", d.unsubscribeHandling, "Your answer: unsubscribe handling");

@@ -7,7 +7,7 @@ import { log } from "@/lib/api/logger";
 
 import { draftSchema, missingAnswers } from "@/lib/sandbox/request";
 import { getActiveEnvironment } from "@/server/environment";
-import { markReviewed, ReviewError, saveDraft } from "@/server/sandbox";
+import { collectFacts, markReviewed, ReviewError, saveDraft } from "@/server/sandbox";
 import { requireTenant } from "@/server/tenant";
 
 /**
@@ -37,9 +37,12 @@ export async function saveSandboxDraft(_prev: SaveDraftState, formData: FormData
     return { error: `${issue?.path.join(".") || "Answer"}: ${issue?.message ?? "invalid"}` };
   }
 
-  await saveDraft(tenant.id, environment, parsed.data);
+  const [, facts] = await Promise.all([
+    saveDraft(tenant.id, environment, parsed.data),
+    collectFacts(tenant.id, environment),
+  ]);
   revalidatePath("/dashboard/sandbox");
-  return { savedAt: new Date().toISOString(), missing: missingAnswers(parsed.data) };
+  return { savedAt: new Date().toISOString(), missing: missingAnswers(parsed.data, facts) };
 }
 
 export interface ReviewState {

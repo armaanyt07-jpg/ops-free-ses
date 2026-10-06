@@ -151,7 +151,7 @@ export async function buildRequest(userId: string, environment: Environment): Pr
     collectFacts(userId, environment),
   ]);
   const draft = readDraft(row);
-  const missing = missingAnswers(draft);
+  const missing = missingAnswers(draft, facts);
   if (missing.length > 0) return { ok: false, missing };
 
   const request = generateRequest(draft, facts);
