@@ -9,10 +9,18 @@ const COLUMNS = [
       { label: "Why Ops-Free", href: "/#problem" },
       { label: "How it works", href: "/#how-it-works" },
       { label: "API", href: "/#api" },
-      { label: "Pricing", href: "/pricing" },
       { label: "Guide", href: "/guide" },
       { label: "Security", href: "/security" },
       { label: "Dashboard", href: "/#dashboard" },
+    ],
+  },
+  {
+    title: "Resources",
+    links: [
+      { label: "Blog", href: "/blog" },
+      { label: "SES DNS checker", href: "/tools/ses-dns-checker" },
+      { label: "Production access writer", href: "/tools/ses-production-access" },
+      { label: "Cost calculator", href: "/tools/ses-cost-calculator" },
     ],
   },
   {
@@ -44,7 +52,7 @@ export function LandingFooter() {
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-10 sm:grid-cols-3 sm:gap-16">
+          <div className="grid grid-cols-2 gap-10 sm:grid-cols-4 sm:gap-12">
             {COLUMNS.map((col) => (
               <div key={col.title}>
                 <p className="text-xs font-semibold tracking-wide uppercase">{col.title}</p>

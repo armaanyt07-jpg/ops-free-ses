@@ -60,10 +60,10 @@ export function LandingNav({ signedIn = false }: { signedIn?: boolean }) {
             Guide
           </Link>
           <Link
-            href="/pricing"
+            href="/blog"
             className="text-muted-foreground hover:text-foreground hover:bg-muted rounded-md px-3 py-2 transition-colors"
           >
-            Pricing
+            Blog
           </Link>
         </nav>
 
@@ -126,11 +126,11 @@ export function LandingNav({ signedIn = false }: { signedIn?: boolean }) {
               Guide
             </Link>
             <Link
-              href="/pricing"
+              href="/blog"
               onClick={closeMobile}
               className="hover:bg-muted block rounded-lg px-3 py-2.5 text-sm font-medium transition-colors"
             >
-              Pricing
+              Blog
             </Link>
             <div className="flex flex-col gap-2 border-t pt-3">
               {signedIn ? (

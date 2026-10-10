@@ -39,6 +39,8 @@ export const POLICIES = {
   webhookIp: { rate: 50, burst: 100 },
   /** Dashboard test sends, per tenant: 10 per minute. */
   testSend: { rate: 10 / 60, burst: 5 },
+  /** The public DNS checker, by client IP: 6 checks a minute. */
+  dnsTool: { rate: 6 / 60, burst: 6 },
 } as const satisfies Record<string, LimitPolicy>;
 
 export type LimitKind = keyof typeof POLICIES;

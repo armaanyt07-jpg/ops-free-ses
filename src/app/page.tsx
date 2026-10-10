@@ -11,7 +11,6 @@ import { LandingFooter } from "@/components/landing/footer";
 import { GetStarted } from "@/components/landing/get-started";
 import { Hero } from "@/components/landing/hero";
 import { LandingNav } from "@/components/landing/nav";
-import { Pricing } from "@/components/landing/pricing";
 import { Problems } from "@/components/landing/problems";
 import { Reveal } from "@/components/landing/reveal";
 import { getTenant } from "@/server/tenant";
@@ -47,9 +46,6 @@ export default async function Home() {
         </Reveal>
         <Reveal>
           <Cost />
-        </Reveal>
-        <Reveal>
-          <Pricing />
         </Reveal>
         <Reveal>
           <Audience />

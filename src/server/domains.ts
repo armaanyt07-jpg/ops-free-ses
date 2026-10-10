@@ -14,11 +14,6 @@ import { attachConfigurationSet } from "@/lib/aws/events";
 import { publishDkimRecords, type Route53Outcome } from "@/lib/aws/route53";
 import { DecryptionError } from "@/lib/crypto/encryption";
 import {
-  analyzeDkim,
-  analyzeDmarc,
-  analyzeSpf,
-  dkimRecordName,
-  dmarcRecordName,
   expectedRecords,
   hostingPlatform,
   normaliseDomain,
@@ -29,7 +24,7 @@ import {
   type DnsRecord,
   type SpfResult,
 } from "@/lib/dns/checks";
-import { lookupCname, lookupTxt } from "@/lib/dns/resolver";
+import { checkDns } from "@/lib/dns/run";
 import { isQueueConfigured } from "@/lib/queue/connection";
 import {
   DOMAIN_JOB_OPTIONS,
@@ -355,45 +350,6 @@ async function checkSes(
       },
     };
   }
-}
-
-async function checkDns(domain: string, tokens: string[]) {
-  const dmarcName = dmarcRecordName(domain);
-
-  const [spfAnswer, dmarcAnswer, dkimAnswers] = await Promise.all([
-    lookupTxt(domain),
-    lookupTxt(dmarcName),
-    Promise.all(tokens.map((t) => lookupCname(dkimRecordName(domain, t)))),
-  ]);
-
-  // "Detect common DNS errors where observable" (FR-2). The most common one:
-  // a DNS provider that appends the zone to whatever is typed as the name,
-  // producing `x._domainkey.example.com.example.com`. Only looked for when the
-  // correct name is empty, so a healthy domain costs no extra lookups.
-  const dkimLookups = await Promise.all(
-    tokens.map(async (token, i) => {
-      const answer = dkimAnswers[i]!;
-      const missing = answer.ok && answer.records.length === 0;
-      return {
-        token,
-        answer,
-        doubled: missing
-          ? await lookupCname(`${dkimRecordName(domain, token)}.${domain}`)
-          : undefined,
-      };
-    }),
-  );
-
-  const dmarcMissing = dmarcAnswer.ok && dmarcAnswer.records.length === 0;
-  const dmarcDoubled = dmarcMissing
-    ? await lookupTxt(`${dmarcName}.${domain}`)
-    : undefined;
-
-  return {
-    spf: analyzeSpf(domain, spfAnswer),
-    dmarc: analyzeDmarc(domain, dmarcAnswer, dmarcDoubled),
-    dkim: analyzeDkim(domain, dkimLookups),
-  };
 }
 
 /**

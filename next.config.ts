@@ -68,6 +68,12 @@ const nextConfig: NextConfig = {
     return [{ source: "/:path*", headers }];
   },
 
+  // Ops-Free is free for everyone for now, so there is no pricing page. Old
+  // links land on the home page. Temporary, in case paid plans come back.
+  async redirects() {
+    return [{ source: "/pricing", destination: "/", permanent: false }];
+  },
+
   // Do not advertise the framework version.
   poweredByHeader: false,
 };

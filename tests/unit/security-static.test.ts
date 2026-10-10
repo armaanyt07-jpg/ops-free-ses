@@ -74,6 +74,9 @@ describe("API routes authenticate", () => {
     // Authenticated by the one-time token in the emailed link; `next` is
     // restricted to same-site paths so the route is not an open redirect.
     "src/app/auth/confirm/route.ts": /safeNextPath\([\s\S]*exchangeCodeForSession\(/,
+    // Public by design: the free DNS checker. No account, so it is per-IP limited before
+    // any lookup, reads only public DNS, and stores nothing (marketing.test.ts pins that).
+    "src/app/api/tools/dns-check/route.ts": /checkLimit\("dnsTool"[\s\S]*checkDns\(/,
     // Public by design (platform probes); reveal only ok/fail, no error text.
     "src/app/api/health/route.ts": /liveness/,
     "src/app/api/health/ready/route.ts": /readiness[\s\S]*never error text/,
