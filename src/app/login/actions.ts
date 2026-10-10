@@ -70,6 +70,11 @@ export async function signIn(
       status: String(error.status ?? ""),
       errorCode: error.code ?? error.name,
     });
+    // Rate limiting says nothing about which accounts exist, and retrying
+    // straight away will keep failing, so it gets its own message.
+    if (error.status === 429) {
+      return { error: "Too many sign-in attempts. Wait a few minutes and try again." };
+    }
     return { error: "Those credentials were not accepted." };
   }
 
