@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { reportError } from "@/lib/observability/errors";
+import { PAUSED_MESSAGE, SERVICE_PAUSED } from "@/lib/service-status";
 
 import { ERROR_CODES, errorEnvelope } from "./errors";
 import { resolveRequestId } from "./request-id";
@@ -68,6 +69,14 @@ export function withErrorBoundary(
 ): (request: NextRequest) => Promise<NextResponse> {
   return async (request) => {
     const requestId = resolveRequestId(request.headers.get("x-request-id"));
+    // Paused: the queue and database may be off, so say so plainly instead of
+    // failing somewhere inside the handler.
+    if (SERVICE_PAUSED) {
+      return NextResponse.json(
+        errorEnvelope(ERROR_CODES.QUEUE_UNAVAILABLE, PAUSED_MESSAGE, requestId),
+        { status: 503, headers: { "X-Request-Id": requestId } },
+      );
+    }
     try {
       return await handler(request, requestId);
     } catch (error) {

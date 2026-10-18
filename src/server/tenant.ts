@@ -7,6 +7,7 @@ import { pgSchema, uuid, varchar } from "drizzle-orm/pg-core";
 import { getDb } from "@/db";
 import { users, type User } from "@/db/schema";
 import { log } from "@/lib/api/logger";
+import { SERVICE_PAUSED } from "@/lib/service-status";
 import { createClient } from "@/lib/supabase/server";
 
 /**
@@ -122,6 +123,9 @@ function isUniqueViolation(error: unknown): boolean {
  * Uses getUser() so the JWT is revalidated against the auth server.
  */
 export async function getTenant(): Promise<Tenant | null> {
+  // Paused: Supabase may be off, and every public page calls this.
+  if (SERVICE_PAUSED) return null;
+
   const supabase = await createClient();
   const {
     data: { user },

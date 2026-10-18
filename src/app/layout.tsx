@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 
 import { ThemeProvider } from "next-themes";
 
+import { PausedBanner } from "@/components/paused-banner";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
@@ -37,6 +38,7 @@ export default function RootLayout({
       <body className="antialiased">
         {/* Light unless the visitor picks dark with the sun/moon switch. */}
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} disableTransitionOnChange>
+          <PausedBanner />
           {children}
           <Toaster />
         </ThemeProvider>

@@ -28,6 +28,11 @@ export default defineConfig({
         find: /^@\/db$/,
         replacement: resolve(root, "tests/support/test-db.ts"),
       },
+      // Paused mode is a production switch; tests run the live product.
+      {
+        find: /^@\/lib\/service-status$/,
+        replacement: resolve(root, "tests/support/service-status-live.ts"),
+      },
       { find: /^@\//, replacement: `${resolve(root, "src")}/` },
     ],
   },

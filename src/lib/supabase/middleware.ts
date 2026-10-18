@@ -1,6 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+import { SERVICE_PAUSED } from "@/lib/service-status";
+
 /**
  * Refreshes the Supabase session cookie on every matched request and gates the
  * dashboard.
@@ -21,6 +23,17 @@ function isPublicPath(pathname: string): boolean {
 export async function updateSession(
   request: NextRequest,
 ): Promise<NextResponse> {
+  // Paused: Supabase may be off, so don't call it. Public pages load as usual;
+  // everything behind sign-in goes to /login, which explains the pause.
+  if (SERVICE_PAUSED) {
+    const { pathname } = request.nextUrl;
+    if (isPublicPath(pathname)) return NextResponse.next({ request });
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    url.search = "";
+    return NextResponse.redirect(url);
+  }
+
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(
